@@ -261,21 +261,22 @@
       cursor: pointer;
       background: transparent;
     }
-    /* Text container: loaded text remains black */
-    #text-container {
-      width: 300px;
-      max-height: 500px;
-      overflow-y: auto;
-      padding: 10px;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 14px;
-      line-height: 1.5;
-      color: #000;
-      position: relative;
-      z-index: 2;
-    }
+#text-container {
+  width: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #000;
+  position: relative;
+  z-index: 2;
+  white-space: pre-wrap;  /* Preserve newlines and spaces */
+}
+
     #audio-player {
       margin-top: 20px;
     }
