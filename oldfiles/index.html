@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio &amp; Visual Interactive Webpage</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="circle">
+      <!-- Sections 1-5: Songs -->
+      <div class="section" id="section-1" onclick="playAudio('audio1', 1, 'song')">
+        <div class="content">
+          <div class="song-name">Song 1</div>
+          <div class="episode-name">Episode 1</div>
+          <div class="symbol music-note" id="symbol-1"></div>
+        </div>
+      </div>
+      <div class="section" id="section-2" onclick="playAudio('audio2', 2, 'song')">
+        <div class="content">
+          <div class="song-name">Song 2</div>
+          <div class="episode-name">Episode 2</div>
+          <div class="symbol music-note" id="symbol-2"></div>
+        </div>
+      </div>
+      <div class="section" id="section-3" onclick="playAudio('audio3', 3, 'song')">
+        <div class="content">
+          <div class="song-name">Song 3</div>
+          <div class="episode-name">Episode 3</div>
+          <div class="symbol music-note" id="symbol-3"></div>
+        </div>
+      </div>
+      <div class="section" id="section-4" onclick="playAudio('audio4', 4, 'song')">
+        <div class="content">
+          <div class="song-name">Song 4</div>
+          <div class="episode-name">Episode 4</div>
+          <div class="symbol music-note" id="symbol-4"></div>
+        </div>
+      </div>
+      <div class="section" id="section-5" onclick="playAudio('audio5', 5, 'song')">
+        <div class="content">
+          <div class="song-name">Song 5</div>
+          <div class="episode-name">Episode 5</div>
+          <div class="symbol music-note" id="symbol-5"></div>
+        </div>
+      </div>
+
+      <!-- Sections 6-10: Audiobooks -->
+      <div class="section" id="section-6" onclick="playAudio('audio6', 6, 'audiobook')">
+        <div class="content">
+          <div class="song-name">Audiobook 6</div>
+          <div class="episode-name">Episode 6</div>
+          <div class="symbol audio-note" id="symbol-6"></div>
+        </div>
+      </div>
+      <div class="section" id="section-7" onclick="playAudio('audio7', 7, 'audiobook')">
+        <div class="content">
+          <div class="song-name">Audiobook 7</div>
+          <div class="episode-name">Episode 7</div>
+          <div class="symbol audio-note" id="symbol-7"></div>
+        </div>
+      </div>
+      <div class="section" id="section-8" onclick="playAudio('audio8', 8, 'audiobook')">
+        <div class="content">
+          <div class="song-name">Audiobook 8</div>
+          <div class="episode-name">Episode 8</div>
+          <div class="symbol audio-note" id="symbol-8"></div>
+        </div>
+      </div>
+      <div class="section" id="section-9" onclick="playAudio('audio9', 9, 'audiobook')">
+        <div class="content">
+          <div class="song-name">Audiobook 9</div>
+          <div class="episode-name">Episode 9</div>
+          <div class="symbol audio-note" id="symbol-9"></div>
+        </div>
+      </div>
+      <div class="section" id="section-10" onclick="playAudio('audio10', 10, 'audiobook')">
+        <div class="content">
+          <div class="song-name">Audiobook 10</div>
+          <div class="episode-name">Episode 10</div>
+          <div class="symbol audio-note" id="symbol-10"></div>
+        </div>
+      </div>
+
+      <!-- The central circle for dynamic images -->
+      <div class="center-circle" id="center-image" style="background-image: url('images/default-image.jpg');"></div>
+    </div>
+  </div>
+
+  <!-- Audio elements with embedded controls -->
+  <!-- Songs -->
+  <audio id="audio1" src="audio/song1.mp3" preload="none" controls></audio>
+  <audio id="audio2" src="audio/song2.mp3" preload="none" controls></audio>
+  <audio id="audio3" src="audio/song3.mp3" preload="none" controls></audio>
+  <audio id="audio4" src="audio/song4.mp3" preload="none" controls></audio>
+  <audio id="audio5" src="audio/song5.mp3" preload="none" controls></audio>
+  <!-- Audiobooks -->
+  <audio id="audio6" src="audio/song6.mp3" preload="none" controls></audio>
+  <audio id="audio7" src="audio/song7.mp3" preload="none" controls></audio>
+  <audio id="audio8" src="audio/song8.mp3" preload="none" controls></audio>
+  <audio id="audio9" src="audio/song9.mp3" preload="none" controls></audio>
+  <audio id="audio10" src="audio/song10.mp3" preload="none" controls></audio>
+
+  <script src="script.js"></script>
+</body>
+</html>

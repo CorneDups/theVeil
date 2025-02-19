@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audio and Visual Interactive Webpage</title>
+  <style>
+    /* General styles */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* Main wrapper: holds the circle container and text container side by side */
+    #main-wrapper {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      width: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    /* Circle container & central image */
+    .circle-container {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      margin-bottom: 20px;
+    }
+    .circle {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      /* Optional: add a subtle circle outline */
+      /* border: 1px dashed #ccc; */
+    }
+    #center-image {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 200px;
+      height: 200px;
+      margin-top: -100px;
+      margin-left: -100px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid #ccc;
+      background-color: #fff;
+      z-index: 10;
+    }
+    #center-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Section items arranged in a circle */
+    .section {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      width: 100px;
+      height: 100px;
+      margin: -50px; /* centers each section */
+      text-align: center;
+      border: 2px solid transparent;
+      border-radius: 50%;
+      transition: border-color 0.3s, background-color 0.3s;
+      z-index: 5;
+    }
+    .section.active {
+      border-color: #ff0000;
+      background-color: rgba(255, 0, 0, 0.1);
+    }
+    .section .section-text {
+      margin-bottom: 5px;
+    }
+    .section .episode-name {
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .section .song-name {
+      font-size: 10px;
+    }
+    .section .icons {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+    }
+    .section .icons img {
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    /* Text container styles */
+    #text-container {
+      width: 300px;
+      max-height: 500px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Audio player styling */
+    #audio-player {
+      margin-top: 20px;
+    }
+
+    /* Responsive styling */
+    @media (max-width: 600px) {
+      .circle-container {
+        width: 300px;
+        height: 300px;
+      }
+      #center-image {
+        width: 120px;
+        height: 120px;
+        margin-top: -60px;
+        margin-left: -60px;
+      }
+      .section {
+        width: 60px;
+        height: 60px;
+        margin: -30px;
+      }
+      .section .episode-name {
+        font-size: 10px;
+      }
+      .section .song-name {
+        font-size: 8px;
+      }
+      .section .icons img {
+        width: 16px;
+        height: 16px;
+      }
+      #text-container {
+        width: 250px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="main-wrapper">
+    <div class="circle-container">
+      <div class="circle" id="circle">
+        <!--
+          There are 10 sections arranged in a circle. 
+          Each section uses a transform to rotate it to the proper angle (with an extra -72° offset),
+          then translates it outward (200px from center),
+          then rotates back so its content remains upright.
+          Each section displays the Episode and Song names and contains two icons:
+            - The audiobook icon (images/audio-note.jpg)
+            - The song icon (images/music-note.jpg)
+          When clicked, each icon calls handleAudioClick(section, type)
+        -->
+        <!-- Section 1 (was 0°, now -72°) -->
+        <div class="section" id="section-1" style="transform: rotate(-72deg) translate(200px) rotate(72deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 1-2</div>
+            <div class="song-name">Unknown</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(1, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(1, 'song')">
+          </div>
+        </div>
+        <!-- Section 2 (was 36°, now -36°) -->
+        <div class="section" id="section-2" style="transform: rotate(-36deg) translate(200px) rotate(36deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 3-4</div>
+            <div class="song-name">Ashes</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(2, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(2, 'song')">
+          </div>
+        </div>
+        <!-- Section 3 (was 72°, now 0°) -->
+        <div class="section" id="section-3" style="transform: rotate(0deg) translate(200px) rotate(0deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 5</div>
+            <div class="song-name">Shadow</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(3, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(3, 'song')">
+          </div>
+        </div>
+        <!-- Section 4 (was 108°, now 36°) -->
+        <div class="section" id="section-4" style="transform: rotate(36deg) translate(200px) rotate(-36deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 6</div>
+            <div class="song-name">Fire & Blood</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(4, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(4, 'song')">
+          </div>
+        </div>
+        <!-- Section 5 (was 144°, now 72°) -->
+        <div class="section" id="section-5" style="transform: rotate(72deg) translate(200px) rotate(-72deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 7</div>
+            <div class="song-name">Void</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(5, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(5, 'song')">
+          </div>
+        </div>
+        <!-- Section 6 (was 180°, now 108°) -->
+        <div class="section" id="section-6" style="transform: rotate(108deg) translate(200px) rotate(-108deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 8</div>
+            <div class="song-name">Lion Roar</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(6, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(6, 'song')">
+          </div>
+        </div>
+        <!-- Section 7 (was 216°, now 144°) -->
+        <div class="section" id="section-7" style="transform: rotate(144deg) translate(200px) rotate(-144deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 9-10</div>
+            <div class="song-name">Abyss</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(7, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(7, 'song')">
+          </div>
+        </div>
+        <!-- Section 8 (was 252°, now 180°) -->
+        <div class="section" id="section-8" style="transform: rotate(180deg) translate(200px) rotate(-180deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 11-12</div>
+            <div class="song-name">Wilderness</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(8, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(8, 'song')">
+          </div>
+        </div>
+        <!-- Section 9 (was 288°, now 216°) -->
+        <div class="section" id="section-9" style="transform: rotate(216deg) translate(200px) rotate(-216deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 13</div>
+            <div class="song-name">Dawn</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(9, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(9, 'song')">
+          </div>
+        </div>
+        <!-- Section 10 (was 324°, now 252°) -->
+        <div class="section" id="section-10" style="transform: rotate(252deg) translate(200px) rotate(-252deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 14</div>
+            <div class="song-name">In My arms</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(10, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(10, 'song')">
+          </div>
+        </div>
+      </div>
+      <div id="center-image">
+        <img src="images/default-image.jpg" alt="Default Center">
+      </div>
+    </div>
+    <!-- Text container (loads text files dynamically) -->
+    <div id="text-container">
+      <p>Select a section to load the text.</p>
+    </div>
+  </div>
+
+  <!-- Embedded audio player with basic controls -->
+  <audio id="audio-player" controls>
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    // Global state variables
+    let currentActive = null; // Holds an object { section: number, type: 'song' or 'audiobook' }
+    const audioPlayer = document.getElementById('audio-player');
+    const centerImage = document.querySelector('#center-image img');
+    const textContainer = document.getElementById('text-container');
+
+    /**
+     * Called when an icon is clicked.
+     * @param {number} section - The section number (1-10).
+     * @param {string} type - Either 'song' or 'audiobook'.
+     */
+    function handleAudioClick(section, type) {
+      // Determine the correct file path for audio
+      let audioFilePath = "";
+      if (type === 'song') {
+        audioFilePath = "audio/song" + section + ".mp3";
+      } else if (type === 'audiobook') {
+        audioFilePath = "audio/audio" + section + ".mp3";
+      }
+      
+      // Determine the correct text file path.
+      // For consistency, we name the text files as "song1.txt" or "audio1.txt" inside a folder named "text".
+      let textFilePath = "";
+      if (type === 'song') {
+        textFilePath = "text/song" + section + ".txt";
+      } else if (type === 'audiobook') {
+        textFilePath = "text/audio" + section + ".txt";
+      }
+
+      // If the same audio is clicked twice, toggle it off and reset text.
+      if (currentActive &&
+          currentActive.section === section &&
+          currentActive.type === type) {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        centerImage.src = "images/default-image.jpg";
+        document.getElementById("section-" + section).classList.remove("active");
+        currentActive = null;
+        textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+        return;
+      }
+
+      // If another section/audio is already playing, remove its highlight and stop the audio.
+      if (currentActive) {
+        document.getElementById("section-" + currentActive.section).classList.remove("active");
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+      }
+
+      // Set the new active selection
+      currentActive = { section, type };
+      document.getElementById("section-" + section).classList.add("active");
+
+      // Update the audio source and play
+      audioPlayer.src = audioFilePath;
+      audioPlayer.play();
+
+      // Change the central image to the section's image
+      centerImage.src = "images/section" + section + "-image.jpg";
+
+      // Fetch and display the associated text file
+      fetch(textFilePath)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.text();
+        })
+        .then(data => {
+          textContainer.textContent = data;
+        })
+        .catch(error => {
+          textContainer.textContent = "Error loading text.";
+          console.error("Error fetching text file:", error);
+        });
+    }
+
+    // When the audio ends, remove highlight and restore default image and text.
+    audioPlayer.addEventListener('ended', function () {
+      if (currentActive) {
+        document.getElementById("section-" + currentActive.section).classList.remove("active");
+      }
+      currentActive = null;
+      centerImage.src = "images/default-image.jpg";
+      textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+    });
+  </script>
+</body>
+</html>
