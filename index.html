@@ -4,20 +4,77 @@
   <meta charset="UTF-8">
   <title>Audio and Visual Interactive Webpage</title>
   <style>
-    /* General styles */
+    /* Default body style */
+    body.default-style {
+      background-color: #f0f0f0;
+      color: #000;
+    }
+    /* Styles for each section (approximations based on your table) */
+    /* Part 1-2: Unknown */
+    body.style-section-1 {
+      background: linear-gradient(135deg, #111, #444);
+      color: #fff;
+      font-family: 'Times New Roman', serif;
+    }
+    /* Part 3-4: Ashes */
+    body.style-section-2 {
+      background: linear-gradient(135deg, #550000, #ff6600);
+      color: #fff;
+    }
+    /* Part 5: Shadow */
+    body.style-section-3 {
+      background: #000;
+      color: #fff;
+    }
+    /* Part 6: Fire & Blood */
+    body.style-section-4 {
+      background: linear-gradient(135deg, #ff0000, #fff700, #ffd700);
+      color: #000;
+    }
+    /* Part 7: Void */
+    body.style-section-5 {
+      background: linear-gradient(135deg, #000, #330033);
+      color: #fff;
+    }
+    /* Part 8: Lion Roar */
+    body.style-section-6 {
+      background: linear-gradient(135deg, #000080, #ffd700);
+      color: #fff;
+    }
+    /* Part 9-10: Abyss */
+    body.style-section-7 {
+      background: #333;
+      color: #fff;
+    }
+    /* Part 11-12: Wilderness */
+    body.style-section-8 {
+      background: #f5deb3;
+      color: #333;
+    }
+    /* Part 13: Dawn */
+    body.style-section-9 {
+      background: linear-gradient(135deg, #001f3f, #ffcc00);
+      color: #fff;
+    }
+    /* Part 14: In Your Arms */
+    body.style-section-10 {
+      background: #f0e68c;
+      color: #000;
+    }
+
+    /* General body and transition styles */
     body {
       margin: 0;
       padding: 0;
       font-family: Arial, sans-serif;
-      background-color: #f0f0f0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      transition: background 0.5s, color 0.5s;
     }
-
-    /* Main wrapper: holds the circle container and text container side by side */
+    /* Main wrapper for circle and text container */
     #main-wrapper {
       display: flex;
       align-items: flex-start;
@@ -28,7 +85,6 @@
       padding: 20px;
       box-sizing: border-box;
     }
-
     /* Circle container & central image */
     .circle-container {
       position: relative;
@@ -41,8 +97,6 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      /* Optional: add a subtle circle outline */
-      /* border: 1px dashed #ccc; */
     }
     #center-image {
       position: absolute;
@@ -63,7 +117,6 @@
       height: 100%;
       object-fit: cover;
     }
-
     /* Section items arranged in a circle */
     .section {
       position: absolute;
@@ -71,7 +124,7 @@
       left: 50%;
       width: 100px;
       height: 100px;
-      margin: -50px; /* centers each section */
+      margin: -50px;
       text-align: center;
       border: 2px solid transparent;
       border-radius: 50%;
@@ -102,7 +155,6 @@
       height: 24px;
       cursor: pointer;
     }
-
     /* Text container styles */
     #text-container {
       width: 300px;
@@ -115,12 +167,10 @@
       font-size: 14px;
       line-height: 1.5;
     }
-
     /* Audio player styling */
     #audio-player {
       margin-top: 20px;
     }
-
     /* Responsive styling */
     @media (max-width: 600px) {
       .circle-container {
@@ -154,19 +204,13 @@
     }
   </style>
 </head>
-<body>
+<body class="default-style">
   <div id="main-wrapper">
     <div class="circle-container">
       <div class="circle" id="circle">
         <!--
-          There are 10 sections arranged in a circle. 
-          Each section uses a transform to rotate it to the proper angle (with an extra -72° offset),
-          then translates it outward (200px from center),
-          then rotates back so its content remains upright.
-          Each section displays the Episode and Song names and contains two icons:
-            - The audiobook icon (images/audio-note.jpg)
-            - The song icon (images/music-note.jpg)
-          When clicked, each icon calls handleAudioClick(section, type)
+          Each section is arranged with a counter-clockwise shift.
+          For example, Section 1 now uses rotate(-72deg) ... etc.
         -->
         <!-- Section 1 (was 0°, now -72°) -->
         <div class="section" id="section-1" style="transform: rotate(-72deg) translate(200px) rotate(72deg);">
@@ -288,74 +332,89 @@
       <p>Select a section to load the text.</p>
     </div>
   </div>
-
   <!-- Embedded audio player with basic controls -->
   <audio id="audio-player" controls>
     Your browser does not support the audio element.
   </audio>
-
   <script>
     // Global state variables
-    let currentActive = null; // Holds an object { section: number, type: 'song' or 'audiobook' }
+    let currentActive = null; // { section: number, type: 'song' or 'audiobook' }
     const audioPlayer = document.getElementById('audio-player');
     const centerImage = document.querySelector('#center-image img');
     const textContainer = document.getElementById('text-container');
-
+    
+    // Remove any style classes from the body
+    function removeStyleClasses() {
+      document.body.classList.remove(
+        'style-section-1',
+        'style-section-2',
+        'style-section-3',
+        'style-section-4',
+        'style-section-5',
+        'style-section-6',
+        'style-section-7',
+        'style-section-8',
+        'style-section-9',
+        'style-section-10'
+      );
+    }
+    
     /**
      * Called when an icon is clicked.
      * @param {number} section - The section number (1-10).
      * @param {string} type - Either 'song' or 'audiobook'.
      */
     function handleAudioClick(section, type) {
-      // Determine the correct file path for audio
+      // Determine the correct file paths.
       let audioFilePath = "";
       if (type === 'song') {
         audioFilePath = "audio/song" + section + ".mp3";
       } else if (type === 'audiobook') {
         audioFilePath = "audio/audio" + section + ".mp3";
       }
-      
-      // Determine the correct text file path.
-      // For consistency, we name the text files as "song1.txt" or "audio1.txt" inside a folder named "text".
       let textFilePath = "";
       if (type === 'song') {
         textFilePath = "text/song" + section + ".txt";
       } else if (type === 'audiobook') {
         textFilePath = "text/audio" + section + ".txt";
       }
-
-      // If the same audio is clicked twice, toggle it off and reset text.
-      if (currentActive &&
-          currentActive.section === section &&
-          currentActive.type === type) {
+      
+      // Toggle off if the same audio is clicked twice.
+      if (currentActive && currentActive.section === section && currentActive.type === type) {
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
         centerImage.src = "images/default-image.jpg";
         document.getElementById("section-" + section).classList.remove("active");
         currentActive = null;
         textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+        removeStyleClasses();
+        document.body.classList.add('default-style');
         return;
       }
-
-      // If another section/audio is already playing, remove its highlight and stop the audio.
+      
+      // If another section is active, remove its highlight and stop the audio.
       if (currentActive) {
         document.getElementById("section-" + currentActive.section).classList.remove("active");
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
       }
-
-      // Set the new active selection
+      
+      // Set new active selection.
       currentActive = { section, type };
       document.getElementById("section-" + section).classList.add("active");
-
-      // Update the audio source and play
+      
+      // Update audio and play.
       audioPlayer.src = audioFilePath;
       audioPlayer.play();
-
-      // Change the central image to the section's image
+      
+      // Update center image.
       centerImage.src = "images/section" + section + "-image.jpg";
-
-      // Fetch and display the associated text file
+      
+      // Update the page style based on the section.
+      removeStyleClasses();
+      document.body.classList.add("style-section-" + section);
+      
+      // Fetch and display the associated text file.
       fetch(textFilePath)
         .then(response => {
           if (!response.ok) {
@@ -371,8 +430,8 @@
           console.error("Error fetching text file:", error);
         });
     }
-
-    // When the audio ends, remove highlight and restore default image and text.
+    
+    // When audio ends, reset the UI.
     audioPlayer.addEventListener('ended', function () {
       if (currentActive) {
         document.getElementById("section-" + currentActive.section).classList.remove("active");
@@ -380,6 +439,8 @@
       currentActive = null;
       centerImage.src = "images/default-image.jpg";
       textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+      removeStyleClasses();
+      document.body.classList.add('default-style');
     });
   </script>
 </body>
