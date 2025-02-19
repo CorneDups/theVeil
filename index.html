@@ -4,65 +4,149 @@
   <meta charset="UTF-8">
   <title>Audio and Visual Interactive Webpage</title>
   <style>
+    /* ======================
+       Keyframe Animations
+       ====================== */
+    /* Gentle breeze for Unknown (Part 1-2) */
+    @keyframes breeze {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    /* Flickering flame for Ashes (Part 3-4) */
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    /* Subtle pulse for Shadow (Part 5) */
+    @keyframes shadowPulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(0.8); }
+    }
+    /* Intense fire flicker for Fire & Blood (Part 6) */
+    @keyframes fireFlicker {
+      0% { filter: brightness(1); }
+      25% { filter: brightness(1.3); }
+      50% { filter: brightness(0.8); }
+      75% { filter: brightness(1.3); }
+      100% { filter: brightness(1); }
+    }
+    /* Glitch effect for Void (Part 7) */
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(2px, -2px); }
+      60% { transform: translate(-2px, -2px); }
+      80% { transform: translate(2px, 2px); }
+      100% { transform: translate(0); }
+    }
+    /* Pulse effect for Lion Roar (Part 8) */
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    /* Slow falling effect for Abyss (Part 9-10) */
+    @keyframes fall {
+      0% { background-position: 0 -100px; }
+      100% { background-position: 0 100px; }
+    }
+    /* Wandering effect for Wilderness (Part 11-12) */
+    @keyframes wander {
+      0% { background-position: 0 0; }
+      100% { background-position: 100% 0; }
+    }
+    /* Gentle gradient shift for Dawn (Part 13) */
+    @keyframes dawn {
+      0% { background-position: 0 0; }
+      50% { background-position: 50% 50%; }
+      100% { background-position: 0 0; }
+    }
+    /* Celestial fade-in for In Your Arms (Part 14) */
+    @keyframes celestial {
+      0% { opacity: 0; transform: scale(0.95); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* ======================
+       Body and Section Styles
+       ====================== */
     /* Default body style */
     body.default-style {
       background-color: #f0f0f0;
       color: #000;
     }
-    /* Styles for each section (approximations based on your table) */
     /* Part 1-2: Unknown */
     body.style-section-1 {
       background: linear-gradient(135deg, #111, #444);
-      color: #fff;
+      background-size: 200% 200%;
+      animation: breeze 15s ease-in-out infinite;
       font-family: 'Times New Roman', serif;
+      /* Note: while the body text may be white, our text container will override to black */
     }
     /* Part 3-4: Ashes */
     body.style-section-2 {
       background: linear-gradient(135deg, #550000, #ff6600);
+      background-size: 200% 200%;
+      animation: flicker 3s infinite alternate;
       color: #fff;
     }
     /* Part 5: Shadow */
     body.style-section-3 {
       background: #000;
+      animation: shadowPulse 5s infinite alternate;
       color: #fff;
     }
     /* Part 6: Fire & Blood */
     body.style-section-4 {
       background: linear-gradient(135deg, #ff0000, #fff700, #ffd700);
+      background-size: 200% 200%;
+      animation: fireFlicker 2s infinite;
       color: #000;
     }
     /* Part 7: Void */
     body.style-section-5 {
       background: linear-gradient(135deg, #000, #330033);
+      animation: glitch 1s infinite;
       color: #fff;
     }
     /* Part 8: Lion Roar */
     body.style-section-6 {
       background: linear-gradient(135deg, #000080, #ffd700);
+      animation: pulse 4s infinite;
       color: #fff;
     }
     /* Part 9-10: Abyss */
     body.style-section-7 {
       background: #333;
+      background-size: 100% auto;
+      animation: fall 20s linear infinite;
       color: #fff;
     }
     /* Part 11-12: Wilderness */
     body.style-section-8 {
-      background: #f5deb3;
+      background: url('images/wilderness-bg.jpg'); /* You could set a desert-inspired image */
+      background-size: cover;
+      animation: wander 30s linear infinite;
       color: #333;
     }
     /* Part 13: Dawn */
     body.style-section-9 {
       background: linear-gradient(135deg, #001f3f, #ffcc00);
+      background-size: 200% 200%;
+      animation: dawn 20s ease-in-out infinite;
       color: #fff;
     }
     /* Part 14: In Your Arms */
     body.style-section-10 {
       background: #f0e68c;
+      animation: celestial 3s ease-out forwards;
       color: #000;
     }
 
-    /* General body and transition styles */
+    /* ======================
+       General Layout & UI Elements
+       ====================== */
     body {
       margin: 0;
       padding: 0;
@@ -74,7 +158,6 @@
       min-height: 100vh;
       transition: background 0.5s, color 0.5s;
     }
-    /* Main wrapper for circle and text container */
     #main-wrapper {
       display: flex;
       align-items: flex-start;
@@ -85,7 +168,6 @@
       padding: 20px;
       box-sizing: border-box;
     }
-    /* Circle container & central image */
     .circle-container {
       position: relative;
       width: 500px;
@@ -117,7 +199,6 @@
       height: 100%;
       object-fit: cover;
     }
-    /* Section items arranged in a circle */
     .section {
       position: absolute;
       top: 55%;
@@ -155,7 +236,7 @@
       height: 24px;
       cursor: pointer;
     }
-    /* Text container styles */
+    /* Ensure text in the text container remains black */
     #text-container {
       width: 300px;
       max-height: 500px;
@@ -166,12 +247,11 @@
       border-radius: 5px;
       font-size: 14px;
       line-height: 1.5;
+      color: #000;
     }
-    /* Audio player styling */
     #audio-player {
       margin-top: 20px;
     }
-    /* Responsive styling */
     @media (max-width: 600px) {
       .circle-container {
         width: 300px;
@@ -208,11 +288,7 @@
   <div id="main-wrapper">
     <div class="circle-container">
       <div class="circle" id="circle">
-        <!--
-          Each section is arranged with a counter-clockwise shift.
-          For example, Section 1 now uses rotate(-72deg) ... etc.
-        -->
-        <!-- Section 1 (was 0°, now -72°) -->
+        <!-- Section 1 (Unknown) -->
         <div class="section" id="section-1" style="transform: rotate(-72deg) translate(200px) rotate(72deg);">
           <div class="section-text">
             <div class="episode-name">Part 1-2</div>
@@ -223,7 +299,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(1, 'song')">
           </div>
         </div>
-        <!-- Section 2 (was 36°, now -36°) -->
+        <!-- Section 2 (Ashes) -->
         <div class="section" id="section-2" style="transform: rotate(-36deg) translate(200px) rotate(36deg);">
           <div class="section-text">
             <div class="episode-name">Part 3-4</div>
@@ -234,7 +310,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(2, 'song')">
           </div>
         </div>
-        <!-- Section 3 (was 72°, now 0°) -->
+        <!-- Section 3 (Shadow) -->
         <div class="section" id="section-3" style="transform: rotate(0deg) translate(200px) rotate(0deg);">
           <div class="section-text">
             <div class="episode-name">Part 5</div>
@@ -245,7 +321,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(3, 'song')">
           </div>
         </div>
-        <!-- Section 4 (was 108°, now 36°) -->
+        <!-- Section 4 (Fire & Blood) -->
         <div class="section" id="section-4" style="transform: rotate(36deg) translate(200px) rotate(-36deg);">
           <div class="section-text">
             <div class="episode-name">Part 6</div>
@@ -256,7 +332,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(4, 'song')">
           </div>
         </div>
-        <!-- Section 5 (was 144°, now 72°) -->
+        <!-- Section 5 (Void) -->
         <div class="section" id="section-5" style="transform: rotate(72deg) translate(200px) rotate(-72deg);">
           <div class="section-text">
             <div class="episode-name">Part 7</div>
@@ -267,7 +343,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(5, 'song')">
           </div>
         </div>
-        <!-- Section 6 (was 180°, now 108°) -->
+        <!-- Section 6 (Lion Roar) -->
         <div class="section" id="section-6" style="transform: rotate(108deg) translate(200px) rotate(-108deg);">
           <div class="section-text">
             <div class="episode-name">Part 8</div>
@@ -278,7 +354,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(6, 'song')">
           </div>
         </div>
-        <!-- Section 7 (was 216°, now 144°) -->
+        <!-- Section 7 (Abyss) -->
         <div class="section" id="section-7" style="transform: rotate(144deg) translate(200px) rotate(-144deg);">
           <div class="section-text">
             <div class="episode-name">Part 9-10</div>
@@ -289,7 +365,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(7, 'song')">
           </div>
         </div>
-        <!-- Section 8 (was 252°, now 180°) -->
+        <!-- Section 8 (Wilderness) -->
         <div class="section" id="section-8" style="transform: rotate(180deg) translate(200px) rotate(-180deg);">
           <div class="section-text">
             <div class="episode-name">Part 11-12</div>
@@ -300,7 +376,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(8, 'song')">
           </div>
         </div>
-        <!-- Section 9 (was 288°, now 216°) -->
+        <!-- Section 9 (Dawn) -->
         <div class="section" id="section-9" style="transform: rotate(216deg) translate(200px) rotate(-216deg);">
           <div class="section-text">
             <div class="episode-name">Part 13</div>
@@ -311,7 +387,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(9, 'song')">
           </div>
         </div>
-        <!-- Section 10 (was 324°, now 252°) -->
+        <!-- Section 10 (In Your Arms) -->
         <div class="section" id="section-10" style="transform: rotate(252deg) translate(200px) rotate(-252deg);">
           <div class="section-text">
             <div class="episode-name">Part 14</div>
@@ -327,23 +403,21 @@
         <img src="images/default-image.jpg" alt="Default Center">
       </div>
     </div>
-    <!-- Text container (loads text files dynamically) -->
     <div id="text-container">
       <p>Select a section to load the text.</p>
     </div>
   </div>
-  <!-- Embedded audio player with basic controls -->
   <audio id="audio-player" controls>
     Your browser does not support the audio element.
   </audio>
   <script>
-    // Global state variables
-    let currentActive = null; // { section: number, type: 'song' or 'audiobook' }
+    // Global state variable to track the active section.
+    let currentActive = null;
     const audioPlayer = document.getElementById('audio-player');
     const centerImage = document.querySelector('#center-image img');
     const textContainer = document.getElementById('text-container');
-    
-    // Remove any style classes from the body
+
+    // Remove any style classes from body.
     function removeStyleClasses() {
       document.body.classList.remove(
         'style-section-1',
@@ -358,28 +432,17 @@
         'style-section-10'
       );
     }
-    
+
     /**
-     * Called when an icon is clicked.
-     * @param {number} section - The section number (1-10).
-     * @param {string} type - Either 'song' or 'audiobook'.
+     * Handle clicks on section icons.
+     * @param {number} section - Section number (1-10)
+     * @param {string} type - 'song' or 'audiobook'
      */
     function handleAudioClick(section, type) {
-      // Determine the correct file paths.
-      let audioFilePath = "";
-      if (type === 'song') {
-        audioFilePath = "audio/song" + section + ".mp3";
-      } else if (type === 'audiobook') {
-        audioFilePath = "audio/audio" + section + ".mp3";
-      }
-      let textFilePath = "";
-      if (type === 'song') {
-        textFilePath = "text/song" + section + ".txt";
-      } else if (type === 'audiobook') {
-        textFilePath = "text/audio" + section + ".txt";
-      }
-      
-      // Toggle off if the same audio is clicked twice.
+      let audioFilePath = (type === 'song') ? "audio/song" + section + ".mp3" : "audio/audio" + section + ".mp3";
+      let textFilePath = (type === 'song') ? "text/song" + section + ".txt" : "text/audio" + section + ".txt";
+
+      // Toggle off if the same section is clicked twice.
       if (currentActive && currentActive.section === section && currentActive.type === type) {
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
@@ -391,47 +454,34 @@
         document.body.classList.add('default-style');
         return;
       }
-      
-      // If another section is active, remove its highlight and stop the audio.
+
       if (currentActive) {
         document.getElementById("section-" + currentActive.section).classList.remove("active");
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
       }
-      
-      // Set new active selection.
+
       currentActive = { section, type };
       document.getElementById("section-" + section).classList.add("active");
-      
-      // Update audio and play.
       audioPlayer.src = audioFilePath;
       audioPlayer.play();
-      
-      // Update center image.
       centerImage.src = "images/section" + section + "-image.jpg";
-      
-      // Update the page style based on the section.
+
       removeStyleClasses();
       document.body.classList.add("style-section-" + section);
-      
-      // Fetch and display the associated text file.
+
       fetch(textFilePath)
         .then(response => {
-          if (!response.ok) {
-            throw new Error("Network response was not ok");
-          }
+          if (!response.ok) { throw new Error("Network response was not ok"); }
           return response.text();
         })
-        .then(data => {
-          textContainer.textContent = data;
-        })
+        .then(data => { textContainer.textContent = data; })
         .catch(error => {
           textContainer.textContent = "Error loading text.";
           console.error("Error fetching text file:", error);
         });
     }
-    
-    // When audio ends, reset the UI.
+
     audioPlayer.addEventListener('ended', function () {
       if (currentActive) {
         document.getElementById("section-" + currentActive.section).classList.remove("active");
