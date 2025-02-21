@@ -11,6 +11,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
   <style>
     /* ======================
+       Toggle Button Style
+       ====================== */
+    #toggle-anim {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    /* ======================
        Three.js & Particle Canvas Styles
        ====================== */
     #three-container {
@@ -31,6 +44,7 @@
       z-index: -2;
       pointer-events: none;
     }
+    
     /* ======================
        Keyframe Animations (unchanged)
        ====================== */
@@ -45,7 +59,7 @@
     @keyframes dawn { 0% { background-position: 0 0; } 50% { background-position: 50% 50%; } 100% { background-position: 0 0; } }
     @keyframes celestial { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
     @keyframes wildernessFade { 0%, 80% { opacity: 0; } 85% { opacity: 0.5; } 90% { opacity: 0.7; } 95% { opacity: 0.9; } 100% { opacity: 0; } }
-
+    
     /* ======================
        Prologue Styles
        ====================== */
@@ -70,7 +84,7 @@
       height: 40px;
       background: transparent;
     }
-
+    
     /* ======================
        Body and Section Styles (unchanged)
        ====================== */
@@ -86,7 +100,7 @@
     body.style-section-8::after { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; pointer-events: none; opacity: 0; animation: wildernessFade 3.2s ease-in-out infinite; z-index: 1; }
     body.style-section-9 { background: linear-gradient(135deg, #001f3f, #ffcc00); background-size: 200% 200%; animation: dawn 20s ease-in-out infinite; color: #fff; }
     body.style-section-10 { background: #f0e68c; animation: celestial 33s ease-out forwards; color: #000; }
-
+    
     /* ======================
        General Layout & UI Elements (unchanged)
        ====================== */
@@ -117,11 +131,14 @@
   </style>
 </head>
 <body class="default-style">
+  <!-- Toggle Animations Button -->
+  <button id="toggle-anim" onclick="toggleAnimations()">Anim Off</button>
+  
   <!-- Three.js Container for 3D Graphics -->
   <div id="three-container"></div>
   <!-- Particle Canvas -->
   <canvas id="particle-canvas"></canvas>
-
+  
   <!-- Prologue Container -->
   <div id="prologue-container">
     <p class="prologue-title">Prologue - Piercing the Veil</p>
@@ -129,7 +146,7 @@
       <img src="images/audio-note.jpg" alt="Prologue Audiobook">
     </div>
   </div>
-
+  
   <!-- Main Interactive Area -->
   <div id="main-wrapper">
     <div class="circle-container">
@@ -256,7 +273,7 @@ Corné.</p>
     </div>
   </div>
   <audio id="audio-player" controls>Your browser does not support the audio element.</audio>
-
+  
   <!-- ======================
        Three.js Initialization & Enhanced Animation
        ====================== -->
@@ -264,12 +281,9 @@ Corné.</p>
     let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
     let rotationSpeed = 0.005; // Base rotation speed
     let circleRadius = 0.7;   // Radius of circular drift for the group
-    // New: orbit factor mapping to adjust orbiting sphere distance multiplier per section
     const orbitFactorMap = {1: 1.0, 2: 1.2, 3: 0.8, 4: 1.5, 5: 1.3, 6: 1.1, 7: 1.6, 8: 1.0, 9: 0.9, 10: 1.0};
-
-    // Freeze motion when no section playing
     let freezeMotion = false;
-
+    
     function initThree() {
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -286,17 +300,37 @@ Corné.</p>
       polyhedron = new THREE.Mesh(geometry, material);
       mainGroup.add(polyhedron);
       
-      // Add a point light for dynamic material appearance
+      // Add a point light
       const pointLight = new THREE.PointLight(0xffffff, 1);
       pointLight.position.set(5, 5, 5);
       scene.add(pointLight);
       
-      // Create orbiting spheres (10 spheres)
+      // Initially, create 0 orbiting spheres (they will be created on section selection)
+      orbitSpheres = [];
+      
+      camera.position.z = 5;
+      window.addEventListener("resize", onWindowResize, false);
+    }
+    function onWindowResize(){
+       camera.aspect = window.innerWidth / window.innerHeight;
+       camera.updateProjectionMatrix();
+       renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    // New function: Update the orbiting spheres based on active section (count = section number)
+    function updateOrbitSpheres(newCount) {
+      // Remove existing spheres
+      orbitSpheres.forEach(sphere => {
+        mainGroup.remove(sphere);
+      });
+      orbitSpheres = [];
+      // Create new spheres
       const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
-      const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      for (let i = 0; i < 10; i++) {
+      const sphereMaterial = new THREE.MeshBasicMaterial({ color: polyhedron.material.color.getHex() });
+      for (let i = 0; i < newCount; i++) {
         const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
-        sphere.userData.angle = i / 10 * Math.PI * 2;
+        sphere.material.transparent = true;
+        sphere.material.opacity = 0.8;
+        sphere.userData.angle = i / newCount * Math.PI * 2;
         sphere.userData.distance = 2; // Base orbit radius
         sphere.position.set(
           Math.cos(sphere.userData.angle) * sphere.userData.distance,
@@ -306,14 +340,6 @@ Corné.</p>
         orbitSpheres.push(sphere);
         mainGroup.add(sphere);
       }
-      
-      camera.position.z = 5;
-      window.addEventListener("resize", onWindowResize, false);
-    }
-    function onWindowResize(){
-       camera.aspect = window.innerWidth / window.innerHeight;
-       camera.updateProjectionMatrix();
-       renderer.setSize(window.innerWidth, window.innerHeight);
     }
     // Update scene parameters based on active section
     function updateSceneParameters(section) {
@@ -329,56 +355,45 @@ Corné.</p>
         9: 0xffdf00,
         10: 0xffc0cb
       };
-	const newColor = colors[section] || 0x00ff00;
-      polyhedron.material.color.setHex(colors[section] || 0x00ff00);
-      const speedMap = {1:0.01,2:0.02,3:0.015,4:0.03,5:0.025,6:0.02,7:0.035,8:0.02,9:0.015,10:0.01};
+      const newColor = colors[section] || 0x00ff00;
+      polyhedron.material.color.setHex(newColor);
+      const speedMap = {1: -0.01, 2: 0.02, 3: 0.015, 4: 0.03, 5: 0.025, 6: 0.02, 7: 0.035, 8: 0.02, 9: 0.015, 10: 0.01};
       rotationSpeed = speedMap[section] || 0.01;
-
-  // Update orbiting spheres to be transparent and match the new color
-  orbitSpheres.forEach(sphere => {
-    sphere.material.color.setHex(newColor);
-    sphere.material.transparent = true;
-    sphere.material.opacity = 0.8;
-  });
-	
-
+      
+      // Update orbiting spheres to be transparent and match the new color
+      orbitSpheres.forEach(sphere => {
+        sphere.material.color.setHex(newColor);
+        sphere.material.transparent = true;
+        sphere.material.opacity = 0.8;
+      });
+      // Update the number of orbiting spheres based on the section number
+      updateOrbitSpheres(section);
     }
     function animateThree(){
       requestAnimationFrame(animateThree);
-      // If motion is frozen, do not update
       if (!freezeMotion) {
-        // Update core rotation
         polyhedron.rotation.x += rotationSpeed;
         polyhedron.rotation.y += rotationSpeed;
         
-        // Update orbiting spheres based on their individual orbit factor (adjust distance)
         orbitSpheres.forEach(sphere => {
-          // Adjust distance multiplier based on active section if available
-          if (currentActive && currentActive.section && orbitFactorMap[currentActive.section]) {
-            sphere.userData.currentDistance = sphere.userData.distance * orbitFactorMap[currentActive.section];
-          } else {
-            sphere.userData.currentDistance = sphere.userData.distance;
-          }
           sphere.userData.angle += rotationSpeed;
-          sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.currentDistance;
-          sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.currentDistance;
+          sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
+          sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
         });
-        // Instead of drifting left/right, move the entire group in a circular path
-        const t = Date.now() * 0.00005;
-        const circleRadiusMotion = 1.5; // Adjust motion radius
-        mainGroup.position.x = Math.cos(t) * circleRadiusMotion-1;
+        // Move mainGroup in a circular path
+        const t = Date.now() * 28.8354/1000000*1.3;
+        const circleRadiusMotion = 1.5;
+        mainGroup.position.x = Math.cos(t) * circleRadiusMotion - 1;
         mainGroup.position.y = -Math.sin(t) * circleRadiusMotion;
       }
       renderer.render(scene, camera);
     }
     initThree();
     animateThree();
-  </script>
-
-  <!-- ======================
-       Particle System & Audio Interaction
-       ====================== -->
-  <script>
+    
+    // -----------------------------
+    // Particle System & Audio Interaction
+    // -----------------------------
     const canvas = document.getElementById("particle-canvas");
     const ctx = canvas.getContext("2d");
     function resizeCanvas() {
@@ -412,10 +427,9 @@ Corné.</p>
     }
     const particles = [];
     function spawnParticles(x, y, color) {
-	
-      for (let i = 0; i < 20; i++) {
-	const t = Date.now() * 0.00025;
-        const angle = Math.cos(t)*Math.PI * 2 + Math.random()*0.8; // Math.random() * Math.PI * 2
+      for (let i = 0; i < 5; i++) {
+	const t = Date.now() * 0.0008;
+        const angle = Math.cos(t)*Math.PI * 2 + Math.random()*0.4; // Math.random() * Math.PI * 2
         const speed = Math.random() * 5 + 100; // Math.random() * 100 + 15
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;
@@ -464,7 +478,7 @@ Corné.</p>
       requestAnimationFrame(animateParticles);
     }
     requestAnimationFrame(animateParticles);
-
+    
     // -----------------------------
     // Audio and UI Interaction
     // -----------------------------
@@ -572,6 +586,19 @@ Corné.</p>
       removeStyleClasses();
       document.body.classList.add('default-style');
     });
+    
+    // -----------------------------
+    // Toggle Animations Button Functionality
+    // -----------------------------
+    function toggleAnimations(){
+      const btn = document.getElementById("toggle-anim");
+      freezeMotion = !freezeMotion;
+      if(freezeMotion){
+        btn.textContent = "Anim On";
+      } else {
+        btn.textContent = "Anim Off";
+      }
+    }
   </script>
 </body>
 </html>
