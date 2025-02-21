@@ -327,9 +327,19 @@
         9: 0xffdf00,
         10: 0xffc0cb
       };
+	const newColor = colors[section] || 0x00ff00;
       polyhedron.material.color.setHex(colors[section] || 0x00ff00);
       const speedMap = {1:0.01,2:0.02,3:0.015,4:0.03,5:0.025,6:0.02,7:0.035,8:0.02,9:0.015,10:0.01};
       rotationSpeed = speedMap[section] || 0.01;
+
+  // Update orbiting spheres to be transparent and match the new color
+  orbitSpheres.forEach(sphere => {
+    sphere.material.color.setHex(newColor);
+    sphere.material.transparent = true;
+    sphere.material.opacity = 0.8;
+  });
+	
+
     }
     function animateThree(){
       requestAnimationFrame(animateThree);
