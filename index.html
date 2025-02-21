@@ -237,7 +237,7 @@
         <div class="section" id="section-10" style="transform: rotate(252deg) translate(200px) rotate(-252deg);">
           <div class="section-text">
             <div class="episode-name">Part 14</div>
-            <div class="song-name">In My arms</div>
+            <div class="song-name">In Your arms</div>
           </div>
           <div class="icons">
             <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(10, 'audiobook')">
@@ -352,7 +352,7 @@
           sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.currentDistance;
         });
         // Instead of drifting left/right, move the entire group in a circular path
-        const t = Date.now() * 0.0005;
+        const t = Date.now() * 0.00005;
         const circleRadiusMotion = 1.5; // Adjust motion radius
         mainGroup.position.x = Math.cos(t) * circleRadiusMotion-1;
         mainGroup.position.y = -Math.sin(t) * circleRadiusMotion;
@@ -400,12 +400,14 @@
     }
     const particles = [];
     function spawnParticles(x, y, color) {
+	
       for (let i = 0; i < 20; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 100 + 15;
+	const t = Date.now() * 0.00025;
+        const angle = Math.cos(t)*Math.PI * 2 + Math.random()*0.8; // Math.random() * Math.PI * 2
+        const speed = Math.random() * 5 + 100; // Math.random() * 100 + 15
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;
-        const life = Math.random() * 1 + 0.1;
+        const life = Math.random() * 1 + 0.2;
         particles.push(new Particle(x, y, vx, vy, life, color));
       }
     }
