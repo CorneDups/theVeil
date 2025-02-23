@@ -46,6 +46,31 @@
     }
     
     /* ======================
+       Special Animation Overlay Styles
+       ====================== */
+    #special-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 50;
+      display: none; /* Hidden by default */
+      overflow: hidden;
+    }
+    /* The shine element that will animate diagonally */
+    #special-overlay .shine {
+      position: absolute;
+      width: 200%;  /* Ensure it covers the diagonal distance */
+      height: 50px; /* A narrow stripe */
+      background: linear-gradient(90deg, transparent, rgba(255,215,0,0.8), transparent);
+      filter: blur(10px);
+      transform: rotate(45deg);
+      opacity: 0;
+    }
+    
+    /* ======================
        Keyframe Animations (unchanged)
        ====================== */
     @keyframes breeze { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -273,6 +298,9 @@ Corné.</p>
     </div>
   </div>
   <audio id="audio-player" controls>Your browser does not support the audio element.</audio>
+  
+  <!-- Special overlay for golden shine animation -->
+  <div id="special-overlay"></div>
   
   <!-- ======================
        Three.js Initialization & Enhanced Animation
@@ -521,6 +549,41 @@ Corné.</p>
         'style-section-10'
       );
     }
+    
+    // New function to trigger the golden shine animation
+    function triggerSpecialAnimation() {
+      const overlay = document.getElementById("special-overlay");
+      overlay.style.display = "block";
+      // Create the shine element
+      const shine = document.createElement("div");
+      shine.className = "shine";
+      overlay.innerHTML = ""; // Clear any previous content
+      overlay.appendChild(shine);
+      
+      // Position the shine so that it starts off-screen bottom-left.
+      // We set initial x and y such that after rotation the shine is at bottom left.
+      gsap.set(shine, { x: -window.innerWidth, y: window.innerHeight, opacity: 1 });
+      
+      // Animate the shine diagonally to the top-right.
+      gsap.to(shine, {
+        duration: 64,
+        x: window.innerWidth,
+        y: -window.innerHeight,
+        ease: "power2.out",
+        onComplete: function() {
+          // Fade out and hide overlay after animation
+          gsap.to(overlay, {
+            duration: 3,
+            opacity: 0.8,
+            onComplete: function() {
+              overlay.style.display = "none";
+              overlay.style.opacity = 1; // reset opacity
+            }
+          });
+        }
+      });
+    }
+    
     function handleAudioClick(section, type) {
       // If clicking the same active section, toggle off and reset history.
       if (currentActive && currentActive.section === section && currentActive.type === type) {
@@ -560,6 +623,8 @@ Corné.</p>
             audioFilePath = "audio/song" + combo + ".mp3";
             textFilePath = "text/song" + combo + ".txt";
             imageFilePath = "images/section" + combo + "-image.jpg";
+            // Trigger the special golden shine animation.
+            triggerSpecialAnimation();
           }
         }
       } else {
