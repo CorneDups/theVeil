@@ -250,7 +250,7 @@
             <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(9, 'song')">
           </div>
         </div>
-        <!-- Section 10 (In Your Arms) -->
+        <!-- Section 10 (In Your Arms) - now uses "0" -->
         <div class="section" id="section-10" style="transform: rotate(252deg) translate(200px) rotate(-252deg);">
           <div class="section-text">
             <div class="episode-name">Part 14</div>
@@ -490,10 +490,19 @@ Corné.</p>
     // New constant: a list of special combinations. Update or add more keys as needed.
     const specialCombinations = {
       "777": true,
-      "333": true,
-      "222": true
+      "003": true,
+      "001": true,
+      "002": true,
+      "004": true,
+      "006": true,
+      "008": true
       // add more combinations here
     };
+    
+    // Helper: convert section "10" to "0"
+    function convertSection(section) {
+      return section === 10 ? "0" : section.toString();
+    }
     
     const audioPlayer = document.getElementById('audio-player');
     const centerImage = document.querySelector('#center-image img');
@@ -531,24 +540,33 @@ Corné.</p>
         return;
       }
       
-      let audioFilePath, textFilePath;
+      let audioFilePath, textFilePath, imageFilePath;
+      // Use the converted value for file naming (10 becomes "0")
+      const baseSection = convertSection(section);
+      
       if (type === 'song') {
-        // Default file paths based on current section
-        audioFilePath = "audio/song" + section + ".mp3";
-        textFilePath = "text/song" + section + ".txt";
+        // Default file paths based on current section (with conversion)
+        audioFilePath = "audio/song" + baseSection + ".mp3";
+        textFilePath = "text/song" + baseSection + ".txt";
+        imageFilePath = "images/section" + baseSection + "-image.jpg";
         // Check if we have a complete history to build a combo.
         if (secondLastSection !== null && lastSection !== null) {
-          let combo = "" + secondLastSection + lastSection + section;
+          const convSecondLast = convertSection(secondLastSection);
+          const convLast = convertSection(lastSection);
+          const convCurrent = baseSection;
+          let combo = "" + convSecondLast + convLast + convCurrent;
           if (specialCombinations[combo]) {
             // Use the special combination file if it exists.
             audioFilePath = "audio/song" + combo + ".mp3";
             textFilePath = "text/song" + combo + ".txt";
+            imageFilePath = "images/section" + combo + "-image.jpg";
           }
         }
       } else {
-        // For audiobooks, use default behavior.
-        audioFilePath = "audio/audio" + section + ".mp3";
-        textFilePath = "text/audio" + section + ".txt";
+        // For audiobooks, use default behavior with conversion.
+        audioFilePath = "audio/audio" + baseSection + ".mp3";
+        textFilePath = "text/audio" + baseSection + ".txt";
+        imageFilePath = "images/section" + baseSection + "-image.jpg";
       }
       
       // Update the click history (shift the previous values)
@@ -566,7 +584,7 @@ Corné.</p>
       document.getElementById("section-" + section).classList.add("active");
       audioPlayer.src = audioFilePath;
       audioPlayer.play();
-      centerImage.src = "images/section" + section + "-image.jpg";
+      centerImage.src = imageFilePath;
       removeStyleClasses();
       document.body.classList.add("style-section-" + section);
       updateSceneParameters(section);
