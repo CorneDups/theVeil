@@ -428,9 +428,9 @@ Corné.</p>
     const particles = [];
     function spawnParticles(x, y, color) {
       for (let i = 0; i < 5; i++) {
-	const t = Date.now() * 0.0008;
-        const angle = Math.cos(t)*Math.PI * 2 + Math.random()*0.4; // Math.random() * Math.PI * 2
-        const speed = Math.random() * 5 + 100; // Math.random() * 100 + 15
+        const t = Date.now() * 0.0008;
+        const angle = Math.cos(t)*Math.PI * 2 + Math.random()*0.4;
+        const speed = Math.random() * 5 + 100;
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;
         const life = Math.random() * 1 + 0.2;
@@ -483,6 +483,18 @@ Corné.</p>
     // Audio and UI Interaction
     // -----------------------------
     let currentActive = null;
+    // New global variables to track the last two sections clicked:
+    let lastSection = null;
+    let secondLastSection = null;
+    
+    // New constant: a list of special combinations. Update or add more keys as needed.
+    const specialCombinations = {
+      "777": true,
+      "333": true,
+      "222": true
+      // add more combinations here
+    };
+    
     const audioPlayer = document.getElementById('audio-player');
     const centerImage = document.querySelector('#center-image img');
     const textContainer = document.getElementById('text-container');
@@ -501,8 +513,7 @@ Corné.</p>
       );
     }
     function handleAudioClick(section, type) {
-      let audioFilePath = (type === 'song') ? "audio/song" + section + ".mp3" : "audio/audio" + section + ".mp3";
-      let textFilePath = (type === 'song') ? "text/song" + section + ".txt" : "text/audio" + section + ".txt";
+      // If clicking the same active section, toggle off and reset history.
       if (currentActive && currentActive.section === section && currentActive.type === type) {
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
@@ -514,8 +525,36 @@ Corné.</p>
         textContainer.innerHTML = "<p>Select a section to load the text.</p>";
         removeStyleClasses();
         document.body.classList.add('default-style');
+        // Reset history when toggling off
+        lastSection = null;
+        secondLastSection = null;
         return;
       }
+      
+      let audioFilePath, textFilePath;
+      if (type === 'song') {
+        // Default file paths based on current section
+        audioFilePath = "audio/song" + section + ".mp3";
+        textFilePath = "text/song" + section + ".txt";
+        // Check if we have a complete history to build a combo.
+        if (secondLastSection !== null && lastSection !== null) {
+          let combo = "" + secondLastSection + lastSection + section;
+          if (specialCombinations[combo]) {
+            // Use the special combination file if it exists.
+            audioFilePath = "audio/song" + combo + ".mp3";
+            textFilePath = "text/song" + combo + ".txt";
+          }
+        }
+      } else {
+        // For audiobooks, use default behavior.
+        audioFilePath = "audio/audio" + section + ".mp3";
+        textFilePath = "text/audio" + section + ".txt";
+      }
+      
+      // Update the click history (shift the previous values)
+      secondLastSection = lastSection;
+      lastSection = section;
+      
       if (currentActive) {
         if (currentActive.section) {
           document.getElementById("section-" + currentActive.section).classList.remove("active");
