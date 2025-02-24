@@ -245,7 +245,7 @@
         <!-- Section 7 (Abyss) -->
         <div class="section" id="section-7" style="transform: rotate(144deg) translate(200px) rotate(-144deg);">
           <div class="section-text">
-            <div class="episode-name">Part 9-10</div>
+            <div class="episode-name">Part 11</div>
             <div class="song-name">Abyss</div>
           </div>
           <div class="icons">
@@ -256,7 +256,7 @@
         <!-- Section 8 (Wilderness) -->
         <div class="section" id="section-8" style="transform: rotate(180deg) translate(200px) rotate(-180deg);">
           <div class="section-text">
-            <div class="episode-name">Part 11-12</div>
+            <div class="episode-name">Part 12</div>
             <div class="song-name">Wilderness</div>
           </div>
           <div class="icons">
@@ -306,11 +306,9 @@ Corné.</p>
        Three.js Initialization & Enhanced Animation
        ====================== -->
   <script>
-    /* ===================================
-       Three.js & Animation Initialization
-    =================================== */
     let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
     let rotationSpeed = 0.005; // Base rotation speed
+    let circleRadius = 0.7;   // Radius of circular drift for the group
     const orbitFactorMap = {1: 1.0, 2: 1.2, 3: 0.8, 4: 1.5, 5: 1.3, 6: 1.1, 7: 1.6, 8: 1.0, 9: 0.9, 10: 1.0};
     let freezeMotion = false;
     
@@ -324,7 +322,7 @@ Corné.</p>
       mainGroup = new THREE.Group();
       scene.add(mainGroup);
       
-      // Create the central icosahedron
+      // Create an icosahedron as the core polyhedron
       const geometry = new THREE.IcosahedronGeometry(1, 1);
       const material = new THREE.MeshStandardMaterial({ color: 0x00ff00, wireframe: false, emissive: 0x003300 });
       polyhedron = new THREE.Mesh(geometry, material);
@@ -335,19 +333,25 @@ Corné.</p>
       pointLight.position.set(5, 5, 5);
       scene.add(pointLight);
       
+      // Initially, create 0 orbiting spheres (they will be created on section selection)
       orbitSpheres = [];
+      
       camera.position.z = 5;
       window.addEventListener("resize", onWindowResize, false);
     }
     function onWindowResize(){
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+       camera.aspect = window.innerWidth / window.innerHeight;
+       camera.updateProjectionMatrix();
+       renderer.setSize(window.innerWidth, window.innerHeight);
     }
+    // New function: Update the orbiting spheres based on active section (count = section number)
     function updateOrbitSpheres(newCount) {
-      // Remove old spheres
-      orbitSpheres.forEach(sphere => mainGroup.remove(sphere));
+      // Remove existing spheres
+      orbitSpheres.forEach(sphere => {
+        mainGroup.remove(sphere);
+      });
       orbitSpheres = [];
+      // Create new spheres
       const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
       const sphereMaterial = new THREE.MeshBasicMaterial({ color: polyhedron.material.color.getHex() });
       for (let i = 0; i < newCount; i++) {
@@ -355,7 +359,7 @@ Corné.</p>
         sphere.material.transparent = true;
         sphere.material.opacity = 0.8;
         sphere.userData.angle = i / newCount * Math.PI * 2;
-        sphere.userData.distance = 2;
+        sphere.userData.distance = 2; // Base orbit radius
         sphere.position.set(
           Math.cos(sphere.userData.angle) * sphere.userData.distance,
           Math.sin(sphere.userData.angle) * sphere.userData.distance,
@@ -365,23 +369,32 @@ Corné.</p>
         mainGroup.add(sphere);
       }
     }
+    // Update scene parameters based on active section
     function updateSceneParameters(section) {
       const colors = {
-        1: 0x222222, 2: 0xff4500, 3: 0x888888, 4: 0xff0000, 5: 0x800080,
-        6: 0xffd700, 7: 0xc8c8c8, 8: 0xd2b48c, 9: 0xffdf00, 10: 0xffc0cb
+        1: 0x222222,
+        2: 0xff4500,
+        3: 0x888888,
+        4: 0xff0000,
+        5: 0x800080,
+        6: 0xffd700,
+        7: 0xc8c8c8,
+        8: 0xd2b48c,
+        9: 0xffdf00,
+        10: 0xffc0cb
       };
       const newColor = colors[section] || 0x00ff00;
       polyhedron.material.color.setHex(newColor);
-      const speedMap = {
-        1: -0.01, 2: 0.02, 3: 0.015, 4: 0.03, 5: 0.025,
-        6: 0.02, 7: 0.035, 8: 0.02, 9: 0.015, 10: 0.01
-      };
+      const speedMap = {1: -0.01, 2: 0.02, 3: 0.015, 4: 0.03, 5: 0.025, 6: 0.02, 7: 0.035, 8: 0.02, 9: 0.015, 10: 0.01};
       rotationSpeed = speedMap[section] || 0.01;
+      
+      // Update orbiting spheres to be transparent and match the new color
       orbitSpheres.forEach(sphere => {
         sphere.material.color.setHex(newColor);
         sphere.material.transparent = true;
         sphere.material.opacity = 0.8;
       });
+      // Update the number of orbiting spheres based on the section number
       updateOrbitSpheres(section);
     }
     function animateThree(){
@@ -389,12 +402,14 @@ Corné.</p>
       if (!freezeMotion) {
         polyhedron.rotation.x += rotationSpeed;
         polyhedron.rotation.y += rotationSpeed;
+        
         orbitSpheres.forEach(sphere => {
           sphere.userData.angle += rotationSpeed;
           sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
           sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
         });
-        const t = Date.now() * 28.8354/1000000 * 1.3;
+        // Move mainGroup in a circular path
+        const t = Date.now() * 28.8354/1000000*1.3;
         const circleRadiusMotion = 1.5;
         mainGroup.position.x = Math.cos(t) * circleRadiusMotion - 1;
         mainGroup.position.y = -Math.sin(t) * circleRadiusMotion;
@@ -404,9 +419,9 @@ Corné.</p>
     initThree();
     animateThree();
     
-    /* ===================================
-       Particle System Initialization
-    =================================== */
+    // -----------------------------
+    // Particle System & Audio Interaction
+    // -----------------------------
     const canvas = document.getElementById("particle-canvas");
     const ctx = canvas.getContext("2d");
     function resizeCanvas() {
@@ -417,9 +432,12 @@ Corné.</p>
     window.addEventListener("resize", resizeCanvas);
     class Particle {
       constructor(x, y, vx, vy, life, color) {
-        this.x = x; this.y = y;
-        this.vx = vx; this.vy = vy;
-        this.life = life; this.remainingLife = life;
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.life = life;
+        this.remainingLife = life;
         this.color = color;
       }
       update(delta) {
@@ -439,7 +457,7 @@ Corné.</p>
     function spawnParticles(x, y, color) {
       for (let i = 0; i < 5; i++) {
         const t = Date.now() * 0.0008;
-        const angle = Math.cos(t) * Math.PI * 2 + Math.random() * 0.4;
+        const angle = Math.cos(t)*Math.PI * 2 + Math.random()*0.4;
         const speed = Math.random() * 5 + 100;
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;
@@ -489,16 +507,27 @@ Corné.</p>
     }
     requestAnimationFrame(animateParticles);
     
-    /* ===================================
-       Audio & UI Interaction
-    =================================== */
+    // -----------------------------
+    // Audio and UI Interaction
+    // -----------------------------
     let currentActive = null;
-    let lastSection = null, secondLastSection = null;
+    // New global variables to track the last two sections clicked:
+    let lastSection = null;
+    let secondLastSection = null;
     
-    // List of special combinations
+    // New constant: a list of special combinations. Update or add more keys as needed.
     const specialCombinations = {
-      "777": true, "003": true, "001": true, "002": true, "004": true, "006": true, "008": true, "333": true, "111": true, "222": true
-      // add more combinations as needed
+      "777": true,
+      "003": true,
+      "001": true,
+      "002": true,
+      "004": true,
+      "006": true,
+      "008": true,
+      "333": true,
+      "111": true,
+      "222": true
+      // add more combinations here
     };
     
     // Helper: convert section "10" to "0"
@@ -506,148 +535,135 @@ Corné.</p>
       return section === 10 ? "0" : section.toString();
     }
     
-    // Helper: Build media paths based on section and type
-    function getMediaPaths(section, type) {
-      const baseSection = convertSection(section);
-      let audioPath, textPath, imagePath;
-      if (type === 'song') {
-        audioPath = "audio/song" + baseSection + ".mp3";
-        textPath = "text/song" + baseSection + ".txt";
-        imagePath = "images/section" + baseSection + "-image.jpg";
-        if (secondLastSection !== null && lastSection !== null) {
-          const convSecondLast = convertSection(secondLastSection);
-          const convLast = convertSection(lastSection);
-          const convCurrent = baseSection;
-          const combo = convSecondLast + convLast + convCurrent;
-          if (specialCombinations[combo]) {
-            audioPath = "audio/song" + combo + ".mp3";
-            textPath = "text/song" + combo + ".txt";
-            imagePath = "images/section" + combo + "-image.jpg";
-          }
-        }
-      } else {
-        // Audiobook
-        audioPath = "audio/audio" + baseSection + ".mp3";
-        textPath = "text/audio" + baseSection + ".txt";
-        imagePath = "images/section" + baseSection + "-image.jpg";
-      }
-      return { audioPath, textPath, imagePath };
-    }
-    
-    // Helper: update click history
-    function updateClickHistory(section) {
-      secondLastSection = lastSection;
-      lastSection = section;
-    }
-    
-    // Helper: clear current active state
-    function clearCurrentActive() {
-      if (currentActive && currentActive.section) {
-        const elem = document.getElementById("section-" + currentActive.section);
-        if (elem) { elem.classList.remove("active"); }
-      }
-      audioPlayer.pause();
-      audioPlayer.currentTime = 0;
-    }
-    
-    // Helper: reset active state completely (used when toggling off)
-    function resetActiveState() {
-      clearCurrentActive();
-      currentActive = null;
-      activeEmitter = null;
-      freezeMotion = true;
-      textContainer.innerHTML = "<p>Select a section to load the text.</p>";
-      removeStyleClasses();
-      document.body.classList.add('default-style');
-      lastSection = null;
-      secondLastSection = null;
-    }
-    
     const audioPlayer = document.getElementById('audio-player');
     const centerImage = document.querySelector('#center-image img');
     const textContainer = document.getElementById('text-container');
-    
     function removeStyleClasses() {
       document.body.classList.remove(
-        'style-section-1', 'style-section-2', 'style-section-3', 'style-section-4',
-        'style-section-5', 'style-section-6', 'style-section-7', 'style-section-8',
-        'style-section-9', 'style-section-10'
+        'style-section-1',
+        'style-section-2',
+        'style-section-3',
+        'style-section-4',
+        'style-section-5',
+        'style-section-6',
+        'style-section-7',
+        'style-section-8',
+        'style-section-9',
+        'style-section-10'
       );
     }
     
-    // Trigger the golden shine special animation using GSAP
+    // New function to trigger the golden shine animation
     function triggerSpecialAnimation() {
       const overlay = document.getElementById("special-overlay");
       overlay.style.display = "block";
+      // Create the shine element
       const shine = document.createElement("div");
       shine.className = "shine";
-      overlay.innerHTML = "";
+      overlay.innerHTML = ""; // Clear any previous content
       overlay.appendChild(shine);
+      
+      // Position the shine so that it starts off-screen bottom-left.
+      // We set initial x and y such that after rotation the shine is at bottom left.
       gsap.set(shine, { x: -window.innerWidth, y: window.innerHeight, opacity: 1 });
+      
+      // Animate the shine diagonally to the top-right.
       gsap.to(shine, {
-        duration: 2,
+        duration: 64,
         x: window.innerWidth,
         y: -window.innerHeight,
         ease: "power2.out",
         onComplete: function() {
+          // Fade out and hide overlay after animation
           gsap.to(overlay, {
-            duration: 0.5,
-            opacity: 0,
+            duration: 3,
+            opacity: 0.8,
             onComplete: function() {
               overlay.style.display = "none";
-              overlay.style.opacity = 1;
+              overlay.style.opacity = 1; // reset opacity
             }
           });
         }
       });
     }
     
-    // Main audio click handler
     function handleAudioClick(section, type) {
-      // If same active section clicked, toggle off
+      // If clicking the same active section, toggle off and reset history.
       if (currentActive && currentActive.section === section && currentActive.type === type) {
-        resetActiveState();
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        centerImage.src = "images/default-image.jpg";
+        document.getElementById("section-" + section).classList.remove("active");
+        currentActive = null;
+        activeEmitter = null;
+        freezeMotion = true;
+        textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+        removeStyleClasses();
+        document.body.classList.add('default-style');
+        // Reset history when toggling off
+        lastSection = null;
+        secondLastSection = null;
         return;
       }
       
-      // Get media paths for current click
-      const { audioPath, textPath, imagePath } = getMediaPaths(section, type);
+      let audioFilePath, textFilePath, imageFilePath;
+      // Use the converted value for file naming (10 becomes "0")
+      const baseSection = convertSection(section);
       
-      // If special combination exists, trigger the golden shine animation
-      if (type === 'song' && secondLastSection !== null && lastSection !== null) {
-        const convSecondLast = convertSection(secondLastSection);
-        const convLast = convertSection(lastSection);
-        const convCurrent = convertSection(section);
-        const combo = convSecondLast + convLast + convCurrent;
-        if (specialCombinations[combo]) {
-          triggerSpecialAnimation();
+      if (type === 'song') {
+        // Default file paths based on current section (with conversion)
+        audioFilePath = "audio/song" + baseSection + ".mp3";
+        textFilePath = "text/song" + baseSection + ".txt";
+        imageFilePath = "images/section" + baseSection + "-image.jpg";
+        // Check if we have a complete history to build a combo.
+        if (secondLastSection !== null && lastSection !== null) {
+          const convSecondLast = convertSection(secondLastSection);
+          const convLast = convertSection(lastSection);
+          const convCurrent = baseSection;
+          let combo = "" + convSecondLast + convLast + convCurrent;
+          if (specialCombinations[combo]) {
+            // Use the special combination file if it exists.
+            audioFilePath = "audio/song" + combo + ".mp3";
+            textFilePath = "text/song" + combo + ".txt";
+            imageFilePath = "images/section" + combo + "-image.jpg";
+            // Trigger the special golden shine animation.
+            triggerSpecialAnimation();
+          }
         }
+      } else {
+        // For audiobooks, use default behavior with conversion.
+        audioFilePath = "audio/audio" + baseSection + ".mp3";
+        textFilePath = "text/audio" + baseSection + ".txt";
+        imageFilePath = "images/section" + baseSection + "-image.jpg";
       }
       
-      // Update click history
-      updateClickHistory(section);
+      // Update the click history (shift the previous values)
+      secondLastSection = lastSection;
+      lastSection = section;
       
-      // Clear current active state if any
-      clearCurrentActive();
-      
-      // Set new active state
+      if (currentActive) {
+        if (currentActive.section) {
+          document.getElementById("section-" + currentActive.section).classList.remove("active");
+        }
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+      }
       currentActive = { section, type };
-      const secElem = document.getElementById("section-" + section);
-      if (secElem) { secElem.classList.add("active"); }
-      
-      audioPlayer.src = audioPath;
+      document.getElementById("section-" + section).classList.add("active");
+      audioPlayer.src = audioFilePath;
       audioPlayer.play();
-      centerImage.src = imagePath;
+      centerImage.src = imageFilePath;
       removeStyleClasses();
       document.body.classList.add("style-section-" + section);
       updateSceneParameters(section);
       freezeMotion = false;
-      
       // Set particle emitter based on section center
-      const rect = secElem.getBoundingClientRect();
-      activeEmitter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, color: getEmitterColor(section) };
-      
-      fetch(textPath)
+      const sectionElem = document.getElementById("section-" + section);
+      const rect = sectionElem.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      activeEmitter = { x: centerX, y: centerY, color: getEmitterColor(section) };
+      fetch(textFilePath)
         .then(response => {
           if (!response.ok) { throw new Error("Network response was not ok"); }
           return response.text();
@@ -658,7 +674,6 @@ Corné.</p>
           console.error("Error fetching text file:", error);
         });
     }
-    
     function handlePrologue() {
       if (currentActive && currentActive.prologue) {
         audioPlayer.pause();
@@ -670,7 +685,11 @@ Corné.</p>
         return;
       }
       if (currentActive) {
-        clearCurrentActive();
+        if (currentActive.section) {
+          document.getElementById("section-" + currentActive.section).classList.remove("active");
+        }
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
       }
       currentActive = { prologue: true };
       activeEmitter = null;
@@ -680,11 +699,9 @@ Corné.</p>
       centerImage.src = "images/default-image.jpg";
       textContainer.innerHTML = "";
     }
-    
     audioPlayer.addEventListener('ended', function () {
       if (currentActive && currentActive.section) {
-        const elem = document.getElementById("section-" + currentActive.section);
-        if (elem) { elem.classList.remove("active"); }
+        document.getElementById("section-" + currentActive.section).classList.remove("active");
       }
       currentActive = null;
       activeEmitter = null;
@@ -695,13 +712,17 @@ Corné.</p>
       document.body.classList.add('default-style');
     });
     
-    /* ===================================
-       Toggle Animations Button
-    =================================== */
+    // -----------------------------
+    // Toggle Animations Button Functionality
+    // -----------------------------
     function toggleAnimations(){
       const btn = document.getElementById("toggle-anim");
       freezeMotion = !freezeMotion;
-      btn.textContent = freezeMotion ? "Anim On" : "Anim Off";
+      if(freezeMotion){
+        btn.textContent = "Anim On";
+      } else {
+        btn.textContent = "Anim Off";
+      }
     }
   </script>
 </body>
