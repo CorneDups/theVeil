@@ -585,17 +585,17 @@ Corné.</p>
       overlay.appendChild(shine);
       gsap.set(shine, { x: -window.innerWidth, y: window.innerHeight, opacity: 1 });
       gsap.to(shine, {
-        duration: 2,
+        duration: 25,
         x: window.innerWidth,
         y: -window.innerHeight,
         ease: "power2.out",
         onComplete: function() {
           gsap.to(overlay, {
-            duration: 0.5,
+            duration: 16,
             opacity: 0,
             onComplete: function() {
               overlay.style.display = "none";
-              overlay.style.opacity = 1;
+              overlay.style.opacity = 0.8;
             }
           });
         }
