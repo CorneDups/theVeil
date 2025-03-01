@@ -356,8 +356,12 @@ Corné.</p>
         
         if (!analyser) {
           analyser = audioContext.createAnalyser();
-          analyser.fftSize = 256; // Power of 2, controls detail level
-          analyser.smoothingTimeConstant = 0.8; // More smoothing for visualization
+          // Increase FFT size for better frequency resolution
+          analyser.fftSize = 1024; // Power of 2: 32, 64, 128, 256, 512, 1024, 2048, etc.
+          analyser.smoothingTimeConstant = 0.85; // Slightly more smoothing for better visuals
+          analyser.minDecibels = -90; // Standard value
+          analyser.maxDecibels = -10; // Standard value
+          
           const bufferLength = analyser.frequencyBinCount;
           dataArray = new Uint8Array(bufferLength);
           updateDebugInfo(`Analyzer created, buffer length: ${bufferLength}`);
@@ -423,6 +427,65 @@ Corné.</p>
       startVisualization();
     });
     
+    // Helper function for frequency band grouping
+    function groupFrequencies(dataArray) {
+      // Define band frequency ranges (approximate based on standard FFT size)
+      // These values can be adjusted based on the actual audio content
+      const bands = {
+        bass: { start: 0, end: Math.floor(dataArray.length * 0.1) }, // First 10% - low frequencies
+        lowMid: { start: Math.floor(dataArray.length * 0.1), end: Math.floor(dataArray.length * 0.3) }, // 10-30% - low-mid
+        highMid: { start: Math.floor(dataArray.length * 0.3), end: Math.floor(dataArray.length * 0.6) }, // 30-60% - high-mid
+        treble: { start: Math.floor(dataArray.length * 0.6), end: dataArray.length } // 60-100% - high frequencies
+      };
+      
+      // Calculate average energy in each band
+      const result = {};
+      
+      for (const [bandName, range] of Object.entries(bands)) {
+        let sum = 0;
+        for (let i = range.start; i < range.end; i++) {
+          sum += dataArray[i];
+        }
+        const avgValue = sum / (range.end - range.start);
+        result[bandName] = avgValue / 255; // Normalize to 0-1
+      }
+      
+      // Get individual frequency values for each band (used for detailed visualization)
+      result.bassValues = dataArray.slice(bands.bass.start, bands.bass.end);
+      result.lowMidValues = dataArray.slice(bands.lowMid.start, bands.lowMid.end);
+      result.highMidValues = dataArray.slice(bands.highMid.start, bands.highMid.end);
+      result.trebleValues = dataArray.slice(bands.treble.start, bands.treble.end);
+      
+      return result;
+    }
+    
+    // Create a smarter shuffled array of indices for better frequency distribution
+    function createShuffledIndices(count) {
+      const indices = [];
+      
+      // Method 1: Interleave frequencies from different regions
+      for (let i = 0; i < count; i++) {
+        // This formula creates an interleaved pattern that spreads frequencies more evenly
+        let index;
+        if (i % 3 === 0) {
+          // Every third position gets a low frequency
+          index = Math.floor(i / 3);
+        } else if (i % 3 === 1) {
+          // Every third+1 position gets a high frequency
+          index = count - 1 - Math.floor(i / 3);
+        } else {
+          // Every third+2 position gets a mid frequency
+          index = Math.floor(count / 2) + Math.floor(i / 6) - Math.floor(i / 3);
+        }
+        
+        // Make sure the index is within bounds
+        index = Math.max(0, Math.min(count - 1, index));
+        indices.push(index);
+      }
+      
+      return indices;
+    }
+    
     // Draw frequency visualization bars
     function drawAudioVisualization() {
       // Always clear the canvas first
@@ -438,52 +501,124 @@ Corné.</p>
         // Get frequency data
         analyser.getByteFrequencyData(dataArray);
         
+        // Group frequencies into bands
+        const frequencyBands = groupFrequencies(dataArray);
+        
         // Style based on current section
-        let gradientColor1, gradientColor2;
+        let gradientColor1, gradientColor2, gradientColor3;
         if (currentActive && currentActive.section) {
           switch(parseInt(currentActive.section)) {
-            case 1: gradientColor1 = '#333'; gradientColor2 = '#888'; break;
-            case 2: gradientColor1 = '#550000'; gradientColor2 = '#ff6600'; break;
-            case 3: gradientColor1 = '#000'; gradientColor2 = '#777'; break;
-            case 4: gradientColor1 = '#770000'; gradientColor2 = '#ff0000'; break;
-            case 5: gradientColor1 = '#330033'; gradientColor2 = '#990099'; break;
-            case 6: gradientColor1 = '#000080'; gradientColor2 = '#ffd700'; break;
-            case 7: gradientColor1 = '#000'; gradientColor2 = '#333'; break;
-            case 8: gradientColor1 = '#654321'; gradientColor2 = '#d2b48c'; break;
-            case 9: gradientColor1 = '#001f3f'; gradientColor2 = '#ffcc00'; break;
-            case 10: gradientColor1 = '#ffb6c1'; gradientColor2 = '#f0e68c'; break;
-            default: gradientColor1 = '#000080'; gradientColor2 = '#00ffff'; break;
+            case 1: 
+              gradientColor1 = '#333'; 
+              gradientColor2 = '#888'; 
+              gradientColor3 = '#666';
+              break;
+            case 2: 
+              gradientColor1 = '#550000'; 
+              gradientColor2 = '#ff6600'; 
+              gradientColor3 = '#aa3300';
+              break;
+            case 3: 
+              gradientColor1 = '#000'; 
+              gradientColor2 = '#777';
+              gradientColor3 = '#444'; 
+              break;
+            case 4: 
+              gradientColor1 = '#770000'; 
+              gradientColor2 = '#ff0000';
+              gradientColor3 = '#aa0000'; 
+              break;
+            case 5: 
+              gradientColor1 = '#330033'; 
+              gradientColor2 = '#990099';
+              gradientColor3 = '#660066'; 
+              break;
+            case 6: 
+              gradientColor1 = '#000080'; 
+              gradientColor2 = '#ffd700';
+              gradientColor3 = '#8b4513'; 
+              break;
+            case 7: 
+              gradientColor1 = '#000'; 
+              gradientColor2 = '#333';
+              gradientColor3 = '#666'; 
+              break;
+            case 8: 
+              gradientColor1 = '#654321'; 
+              gradientColor2 = '#d2b48c';
+              gradientColor3 = '#8b4513'; 
+              break;
+            case 9: 
+              gradientColor1 = '#001f3f'; 
+              gradientColor2 = '#ffcc00';
+              gradientColor3 = '#ff8c00'; 
+              break;
+            case 10: 
+              gradientColor1 = '#ffb6c1'; 
+              gradientColor2 = '#f0e68c';
+              gradientColor3 = '#ffa07a'; 
+              break;
+            default: 
+              gradientColor1 = '#000080'; 
+              gradientColor2 = '#00ffff';
+              gradientColor3 = '#0080ff'; 
+              break;
           }
         } else {
           gradientColor1 = '#000080';
           gradientColor2 = '#00ffff';
+          gradientColor3 = '#0080ff';
         }
         
-        // VISUALIZATION STYLE 1: Circular visualization from center
-        // This is where you can modify for different visual styles
+        // IMPROVED VISUALIZATION: Multi-layer frequency band visualization
         const centerX = visualizationCanvas.width / 2;
         const centerY = visualizationCanvas.height / 2;
         const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.8;
         
-        // Calculate average frequency for intensity
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
-        }
-        const avgFrequency = sum / dataArray.length / 255; // 0 to 1 scale
+        // Calculate overall intensity for animation effects
+        const intensity = (frequencyBands.bass * 1.5 + 
+                          frequencyBands.lowMid * 1.2 + 
+                          frequencyBands.highMid + 
+                          frequencyBands.treble * 0.8) / 4;
         
-        // Draw circular bars
+        // Create shuffled indices for better distribution
         const barCount = 64;  // Number of bars to display
         const angleStep = (Math.PI * 2) / barCount;
+        const shuffledIndices = createShuffledIndices(barCount);
         
+        // Draw background glow based on overall intensity
+        const bgGlow = visualCtx.createRadialGradient(
+          centerX, centerY, 0,
+          centerX, centerY, maxRadius * 1.2
+        );
+        bgGlow.addColorStop(0, `rgba(${parseInt(gradientColor3.substr(1, 2), 16)}, ${parseInt(gradientColor3.substr(3, 2), 16)}, ${parseInt(gradientColor3.substr(5, 2), 16)}, ${0.1 + intensity * 0.2})`);
+        bgGlow.addColorStop(0.7, `rgba(${parseInt(gradientColor3.substr(1, 2), 16)}, ${parseInt(gradientColor3.substr(3, 2), 16)}, ${parseInt(gradientColor3.substr(5, 2), 16)}, ${0.05 + intensity * 0.1})`);
+        bgGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+        
+        visualCtx.fillStyle = bgGlow;
+        visualCtx.beginPath();
+        visualCtx.arc(centerX, centerY, maxRadius * 1.2, 0, Math.PI * 2);
+        visualCtx.fill();
+        
+        // ---------------------------------
+        // LAYER 1: Inner Bass Visualization
+        // ---------------------------------
+        const bassRadius = maxRadius * 0.3;
+        
+        // First, draw a subtle bass pulse circle
+        visualCtx.beginPath();
+        visualCtx.arc(centerX, centerY, bassRadius * (0.8 + frequencyBands.bass * 0.5), 0, Math.PI * 2);
+        visualCtx.fillStyle = `rgba(${parseInt(gradientColor1.substr(1, 2), 16)}, ${parseInt(gradientColor1.substr(3, 2), 16)}, ${parseInt(gradientColor1.substr(5, 2), 16)}, ${0.1 + frequencyBands.bass * 0.3})`;
+        visualCtx.fill();
+        
+        // Bass frequency bars (innermost ring)
         for (let i = 0; i < barCount; i++) {
-          // Get data for this bar (map to our data array)
-          const dataIndex = Math.floor(i * dataArray.length / barCount);
-          const value = dataArray[dataIndex] / 255; // Normalize to 0-1
+          // Use shuffled index to get better distribution
+          const bassIndex = Math.floor(shuffledIndices[i] * frequencyBands.bassValues.length / barCount);
+          const value = frequencyBands.bassValues[bassIndex] / 255;
           
-          // Calculate bar properties
           const angle = i * angleStep;
-          const barHeight = value * maxRadius;
+          const barHeight = (0.3 + value * 0.7) * bassRadius; // Minimum size + dynamic part
           
           // Create gradient for the bars
           const gradient = visualCtx.createLinearGradient(
@@ -491,14 +626,14 @@ Corné.</p>
             centerX + Math.cos(angle) * barHeight,
             centerY + Math.sin(angle) * barHeight
           );
-          gradient.addColorStop(0, `rgba(${parseInt(gradientColor1.substr(1, 2), 16)}, ${parseInt(gradientColor1.substr(3, 2), 16)}, ${parseInt(gradientColor1.substr(5, 2), 16)}, 0.1)`);
-          gradient.addColorStop(1, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.7)`);
+          gradient.addColorStop(0, `rgba(${parseInt(gradientColor1.substr(1, 2), 16)}, ${parseInt(gradientColor1.substr(3, 2), 16)}, ${parseInt(gradientColor1.substr(5, 2), 16)}, 0.8)`);
+          gradient.addColorStop(1, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.2)`);
           
           visualCtx.beginPath();
           visualCtx.moveTo(centerX, centerY);
           
           // Draw a wider arc for each bar
-          const arcWidth = angleStep * 0.8; // Slightly narrower than angleStep for spacing
+          const arcWidth = angleStep * 0.85;
           
           visualCtx.arc(
             centerX, centerY,
@@ -510,21 +645,131 @@ Corné.</p>
           visualCtx.lineTo(centerX, centerY);
           visualCtx.fillStyle = gradient;
           visualCtx.fill();
-          
-          // Add subtle border
-          visualCtx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-          visualCtx.stroke();
         }
         
-        // Add circular waveform
+        // ---------------------------------
+        // LAYER 2: Mid Frequency Visualization
+        // ---------------------------------
+        const midRadius = maxRadius * 0.6;
+        
+        // Mid frequency bars (middle ring)
+        for (let i = 0; i < barCount; i++) {
+          // Combine low and high mids for variety
+          const midIndex = i % 2 === 0 ? 
+            Math.floor(shuffledIndices[i] * frequencyBands.lowMidValues.length / barCount) :
+            Math.floor(shuffledIndices[i] * frequencyBands.highMidValues.length / barCount);
+          
+          const values = i % 2 === 0 ? frequencyBands.lowMidValues : frequencyBands.highMidValues;
+          let value = values[midIndex] / 255;
+          
+          // Enhance mid frequencies slightly for better visualization
+          value = Math.pow(value, 0.8); // Enhance quieter sounds
+          
+          const angle = i * angleStep + (Math.PI / barCount); // Offset angle for this layer
+          const barStart = bassRadius * 1.1; // Start outside the bass layer
+          const barLength = value * (midRadius - barStart);
+          
+          // Create gradient
+          const gradient = visualCtx.createLinearGradient(
+            centerX + Math.cos(angle) * barStart,
+            centerY + Math.sin(angle) * barStart,
+            centerX + Math.cos(angle) * (barStart + barLength),
+            centerY + Math.sin(angle) * (barStart + barLength)
+          );
+          gradient.addColorStop(0, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.1)`);
+          gradient.addColorStop(1, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.7)`);
+          
+          const barEnd = barStart + barLength;
+          const arcWidth = angleStep * 0.8;
+          
+          visualCtx.beginPath();
+          visualCtx.arc(centerX, centerY, barStart, angle - arcWidth/2, angle + arcWidth/2);
+          visualCtx.arc(centerX, centerY, barEnd, angle + arcWidth/2, angle - arcWidth/2, true);
+          visualCtx.closePath();
+          
+          visualCtx.fillStyle = gradient;
+          visualCtx.fill();
+        }
+        
+        // ---------------------------------
+        // LAYER 3: High Frequency Visualization
+        // ---------------------------------
+        const highRadius = maxRadius;
+        
+        // High frequency bars (outer ring)
+        for (let i = 0; i < barCount; i++) {
+          // Use shuffled index for treble frequencies
+          const trebleIndex = Math.floor(shuffledIndices[i] * frequencyBands.trebleValues.length / barCount);
+          const value = frequencyBands.trebleValues[trebleIndex] / 255;
+          
+          // Enhance high frequencies more aggressively
+          const enhancedValue = Math.pow(value, 0.7);
+          
+          const angle = i * angleStep; // Back to original angle
+          const barStart = midRadius * 1.05; // Start outside the mid layer
+          const barLength = enhancedValue * (highRadius - barStart);
+          
+          // Create gradient
+          const gradient = visualCtx.createLinearGradient(
+            centerX + Math.cos(angle) * barStart,
+            centerY + Math.sin(angle) * barStart,
+            centerX + Math.cos(angle) * (barStart + barLength),
+            centerY + Math.sin(angle) * (barStart + barLength)
+          );
+          gradient.addColorStop(0, `rgba(${parseInt(gradientColor3.substr(1, 2), 16)}, ${parseInt(gradientColor3.substr(3, 2), 16)}, ${parseInt(gradientColor3.substr(5, 2), 16)}, 0.2)`);
+          gradient.addColorStop(1, `rgba(255, 255, 255, 0.8)`);
+          
+          const barEnd = barStart + barLength;
+          const arcWidth = angleStep * 0.7;
+          
+          visualCtx.beginPath();
+          visualCtx.arc(centerX, centerY, barStart, angle - arcWidth/2, angle + arcWidth/2);
+          visualCtx.arc(centerX, centerY, barEnd, angle + arcWidth/2, angle - arcWidth/2, true);
+          visualCtx.closePath();
+          
+          visualCtx.fillStyle = gradient;
+          visualCtx.fill();
+          
+          // Add glow for prominent high frequencies
+          if (enhancedValue > 0.7) {
+            const glow = visualCtx.createRadialGradient(
+              centerX + Math.cos(angle) * barEnd,
+              centerY + Math.sin(angle) * barEnd,
+              0,
+              centerX + Math.cos(angle) * barEnd,
+              centerY + Math.sin(angle) * barEnd,
+              10 + enhancedValue * 15
+            );
+            glow.addColorStop(0, `rgba(255, 255, 255, ${enhancedValue})`);
+            glow.addColorStop(1, "rgba(255, 255, 255, 0)");
+            
+            visualCtx.fillStyle = glow;
+            visualCtx.beginPath();
+            visualCtx.arc(
+              centerX + Math.cos(angle) * barEnd,
+              centerY + Math.sin(angle) * barEnd,
+              10 + enhancedValue * 15,
+              0, Math.PI * 2
+            );
+            visualCtx.fill();
+          }
+        }
+        
+        // Add overall waveform outline that connects all frequencies
         visualCtx.beginPath();
-        visualCtx.strokeStyle = `rgba(255, 255, 255, ${0.3 + avgFrequency * 0.5})`;
+        visualCtx.strokeStyle = `rgba(255, 255, 255, ${0.3 + intensity * 0.5})`;
         visualCtx.lineWidth = 2;
         
-        for (let i = 0; i < dataArray.length; i++) {
-          const angle = (i / dataArray.length) * Math.PI * 2;
-          const value = dataArray[i] / 255;
-          const radius = maxRadius * 0.3 + value * maxRadius * 0.7;
+        // Create a smoother, more balanced waveform using the shuffled indices
+        for (let i = 0; i < barCount; i++) {
+          const index = shuffledIndices[i];
+          const normalizedIndex = index / barCount;
+          const dataIndex = Math.floor(normalizedIndex * dataArray.length);
+          const value = dataArray[dataIndex] / 255;
+          
+          const angle = i * angleStep;
+          // Use a combination of bass, mid and high frequencies for a balanced waveform
+          const radius = bassRadius + (value * (highRadius - bassRadius));
           
           const x = centerX + Math.cos(angle) * radius;
           const y = centerY + Math.sin(angle) * radius;
@@ -538,30 +783,6 @@ Corné.</p>
         
         visualCtx.closePath();
         visualCtx.stroke();
-        
-        // Add glowing orbs at peaks
-        for (let i = 0; i < dataArray.length; i += 8) {
-          const angle = (i / dataArray.length) * Math.PI * 2;
-          const value = dataArray[i] / 255;
-          
-          if (value > 0.5) { // Only show for louder sounds
-            const radius = maxRadius * 0.3 + value * maxRadius * 0.7;
-            const x = centerX + Math.cos(angle) * radius;
-            const y = centerY + Math.sin(angle) * radius;
-            
-            const glow = visualCtx.createRadialGradient(
-              x, y, 0,
-              x, y, 20 * value
-            );
-            glow.addColorStop(0, `rgba(255, 255, 255, ${value})`);
-            glow.addColorStop(1, "rgba(255, 255, 255, 0)");
-            
-            visualCtx.fillStyle = glow;
-            visualCtx.beginPath();
-            visualCtx.arc(x, y, 20 * value, 0, Math.PI * 2);
-            visualCtx.fill();
-          }
-        }
       } catch (error) {
         console.error("Visualization error:", error);
       }
