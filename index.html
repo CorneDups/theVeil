@@ -440,6 +440,24 @@ Corné.</p>
        ====================== -->
   <script>
     /* ===================================
+       Global Variables
+    =================================== */
+    // Declare global variables at the top of the script
+    audioContext, analyser, dataArray;
+    audioInitialized = false;
+    let currentActive = null;
+    let lastSection = null, secondLastSection = null;
+    let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
+    let rotationSpeed = 0.005; // Base rotation speed
+    const orbitFactorMap = {1: 1.0, 2: 1.2, 3: 0.8, 4: 1.5, 5: 1.3, 6: 1.1, 7: 1.6, 8: 1.0, 9: 0.9, 10: 1.0};
+    let freezeMotion = false;
+    let activeEmitter = null;
+    let spawnAccumulator = 0;
+    let lastTime = performance.now();
+    particles = [];
+    let currentVisualizationStyle = 1;
+    
+    /* ===================================
        Audio Context & Analyzer Setup
     =================================== */
     let audioContext, analyser, dataArray;
@@ -517,16 +535,20 @@ Corné.</p>
     
     // Helper function to check if we should show audio visualizations
     function shouldShowVisualization() {
+      // Add defensive check for currentActive - handle the case when it's not initialized yet
+      if (!currentActive) {
+        return false;
+      }
+      
       // Debug visualization issues
-      if (currentActive && currentActive.section) {
+      if (currentActive.section) {
         console.log(`Visualization check for section ${currentActive.section}, type: ${currentActive.type}`);
       }
       
       // Only show visualizations for songs, not for audiobooks
       // Make sure we're checking the correct type value
       return !freezeMotion && audioInitialized && !audioPlayer.paused && 
-             currentActive && 
-             (currentActive.type === 'song' || currentActive.type === 'song'); // Accept both 'song' or other capitalization
+             currentActive.type === 'song';
     }
     
     // Start the audio visualization
@@ -713,7 +735,7 @@ Corné.</p>
         // IMPROVED VISUALIZATION: Multi-layer frequency band visualization
         const centerX = visualizationCanvas.width / 2;
         const centerY = visualizationCanvas.height / 2;
-        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.7;
+        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.4;
         
         // Calculate overall intensity for animation effects
         const intensity = (frequencyBands.bass * 1.5 + 
@@ -934,10 +956,6 @@ Corné.</p>
     /* ===================================
        Three.js & Animation Initialization
     =================================== */
-    let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
-    let rotationSpeed = 0.005; // Base rotation speed
-    const orbitFactorMap = {1: 1.0, 2: 1.2, 3: 0.8, 4: 1.5, 5: 1.3, 6: 1.1, 7: 1.6, 8: 1.0, 9: 0.9, 10: 1.0};
-    let freezeMotion = false;
     
     function initThree() {
       scene = new THREE.Scene();
@@ -1016,7 +1034,7 @@ Corné.</p>
     // Update audio visualization in 3D scene
     function updateAudioVisualization() {
       // Only update for songs, not audiobooks
-      if (!shouldShowVisualization()) {
+      if (!currentActive || !shouldShowVisualization()) {
         return;
       }
       
@@ -1093,7 +1111,7 @@ Corné.</p>
       
       if (!freezeMotion) {
         // Basic animation when no audio is playing or when playing audiobooks
-        if (!shouldShowVisualization()) {
+        if (!audioInitialized || !currentActive || !shouldShowVisualization()) {
           polyhedron.rotation.x += rotationSpeed;
           polyhedron.rotation.y += rotationSpeed;
           
@@ -1168,8 +1186,8 @@ Corné.</p>
         particles.push(new Particle(x, y, vx, vy, life, color));
       }
     }
-    let activeEmitter = null;
-    let spawnAccumulator = 0;
+    activeEmitter = null;
+    spawnAccumulator = 0;
     function getEmitterColor(section) {
       switch (section) {
         case 1: return "255,255,255";
@@ -1185,7 +1203,7 @@ Corné.</p>
         default: return "255,255,0";
       }
     }
-    let lastTime = performance.now();
+    
     function animateParticles(time) {
       const delta = (time - lastTime) / 1000;
       lastTime = time;
@@ -1195,7 +1213,7 @@ Corné.</p>
         spawnAccumulator += delta;
         
         // If audio is playing, make particle emission react to audio (only for songs)
-        if (shouldShowVisualization()) {
+        if (currentActive && shouldShowVisualization()) {
           analyser.getByteFrequencyData(dataArray);
           
           // Calculate average frequency
@@ -1240,8 +1258,6 @@ Corné.</p>
     /* ===================================
        Audio & UI Interaction
     =================================== */
-    let currentActive = null;
-    let lastSection = null, secondLastSection = null;
     
     // List of special combinations
     const specialCombinations = {
@@ -1326,9 +1342,6 @@ Corné.</p>
       // Keep visualization running but show idle state
       startVisualization();
     }
-    
-    // Add a keyboard shortcut to cycle through visualization styles
-    let currentVisualizationStyle = 1; // Start with style 1
     
     window.addEventListener('keydown', function(e) {
       // Press 'V' key to cycle visualization styles (when implemented)
