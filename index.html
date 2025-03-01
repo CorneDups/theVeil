@@ -50,28 +50,13 @@
        ====================== */
     #audio-visualization {
       position: fixed;
-      bottom: 100px;
+      top: 0;
       left: 0;
-      width: 100%;
-      height: 120px;
-      z-index: 40;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1; /* Behind most elements but in front of body background */
       pointer-events: none;
-      background-color: rgba(0, 0, 0, 0.2);
-      border-top: 1px solid rgba(255, 255, 255, 0.3);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-    }
-    
-    #debug-info {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.7);
-      color: #fff;
-      padding: 10px;
-      font-size: 12px;
-      z-index: 1000;
-      max-width: 300px;
-      display: none;
+      opacity: 0.4; /* More transparent */
     }
     
     /* ======================
@@ -187,9 +172,6 @@
 <body class="default-style">
   <!-- Toggle Animations Button -->
   <button id="toggle-anim" onclick="toggleAnimations()">Anim Off</button>
-  
-  <!-- Debug Info -->
-  <div id="debug-info"></div>
   
   <!-- Three.js Container for 3D Graphics -->
   <div id="three-container"></div>
@@ -347,34 +329,9 @@ Corné.</p>
     let audioContext, analyser, dataArray;
     let audioInitialized = false;
     
-    // Debug helper function
+    // Simplified logging function (only logs to console now)
     function updateDebugInfo(message) {
-      const debugElement = document.getElementById("debug-info");
-      if (debugElement) {
-        // Show the debug info
-        debugElement.style.display = "block";
-        
-        // Create timestamp
-        const now = new Date();
-        const timestamp = now.getHours() + ':' + 
-                         now.getMinutes().toString().padStart(2, '0') + ':' + 
-                         now.getSeconds().toString().padStart(2, '0') + '.' +
-                         now.getMilliseconds().toString().padStart(3, '0');
-        
-        // Add the message with timestamp
-        debugElement.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-        
-        // Keep only the last 10 messages
-        const messages = debugElement.getElementsByTagName("div");
-        if (messages.length > 10) {
-          for (let i = 0; i < messages.length - 10; i++) {
-            debugElement.removeChild(messages[i]);
-          }
-        }
-        
-        // Auto-scroll to bottom
-        debugElement.scrollTop = debugElement.scrollHeight;
-      }
+      console.log(`[Audio Visualization] ${message}`);
     }
     
     // Initialize the audio context and analyzer
@@ -432,7 +389,7 @@ Corné.</p>
     
     function resizeVisualizationCanvas() {
       visualizationCanvas.width = window.innerWidth;
-      visualizationCanvas.height = 80;
+      visualizationCanvas.height = window.innerHeight;
     }
     
     resizeVisualizationCanvas();
@@ -443,28 +400,8 @@ Corné.</p>
       // Always clear the canvas first
       visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
       
-      // Draw canvas border to make it visible for debugging
-      visualCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-      visualCtx.strokeRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
-      
-      // Show visualization status
-      visualCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
-      visualCtx.font = "14px Arial";
-      
-      if (!audioInitialized) {
-        visualCtx.fillText("Audio visualization not initialized - play some audio to activate", 20, 30);
-        requestAnimationFrame(drawAudioVisualization);
-        return;
-      }
-      
-      if (freezeMotion) {
-        visualCtx.fillText("Animation paused - click 'Anim On' to resume", 20, 30);
-        requestAnimationFrame(drawAudioVisualization);
-        return;
-      }
-      
-      if (audioPlayer.paused) {
-        visualCtx.fillText("Audio paused - play a section to see visualization", 20, 30);
+      // Just return if there's no audio playing, but keep the animation loop going
+      if (!audioInitialized || freezeMotion || audioPlayer.paused) {
         requestAnimationFrame(drawAudioVisualization);
         return;
       }
@@ -494,113 +431,111 @@ Corné.</p>
           gradientColor2 = '#00ffff';
         }
         
-        const gradient = visualCtx.createLinearGradient(0, 0, 0, visualizationCanvas.height);
-        gradient.addColorStop(0, gradientColor1);
-        gradient.addColorStop(1, gradientColor2);
-        
-        // Draw visualization background
-        visualCtx.fillStyle = "rgba(0, 0, 0, 0.4)";
-        visualCtx.fillRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
-        
-        // Draw bars with more pronounced effect
-        const barWidth = (visualizationCanvas.width / dataArray.length) * 2; // Wider bars
+        // VISUALIZATION STYLE 1: Circular visualization from center
+        // This is where you can modify for different visual styles
+        const centerX = visualizationCanvas.width / 2;
         const centerY = visualizationCanvas.height / 2;
+        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.4;
         
-        // First, calculate the maximum value for scaling
-        let maxValue = 1; // Avoid division by zero
+        // Calculate average frequency for intensity
+        let sum = 0;
         for (let i = 0; i < dataArray.length; i++) {
-          maxValue = Math.max(maxValue, dataArray[i]);
+          sum += dataArray[i];
+        }
+        const avgFrequency = sum / dataArray.length / 255; // 0 to 1 scale
+        
+        // Draw circular bars
+        const barCount = 64;  // Number of bars to display
+        const angleStep = (Math.PI * 2) / barCount;
+        
+        for (let i = 0; i < barCount; i++) {
+          // Get data for this bar (map to our data array)
+          const dataIndex = Math.floor(i * dataArray.length / barCount);
+          const value = dataArray[dataIndex] / 255; // Normalize to 0-1
+          
+          // Calculate bar properties
+          const angle = i * angleStep;
+          const barHeight = value * maxRadius;
+          
+          // Create gradient for the bars
+          const gradient = visualCtx.createLinearGradient(
+            centerX, centerY,
+            centerX + Math.cos(angle) * barHeight,
+            centerY + Math.sin(angle) * barHeight
+          );
+          gradient.addColorStop(0, `rgba(${parseInt(gradientColor1.substr(1, 2), 16)}, ${parseInt(gradientColor1.substr(3, 2), 16)}, ${parseInt(gradientColor1.substr(5, 2), 16)}, 0.1)`);
+          gradient.addColorStop(1, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.7)`);
+          
+          visualCtx.beginPath();
+          visualCtx.moveTo(centerX, centerY);
+          
+          // Draw a wider arc for each bar
+          const arcWidth = angleStep * 0.8; // Slightly narrower than angleStep for spacing
+          
+          visualCtx.arc(
+            centerX, centerY,
+            barHeight,
+            angle - arcWidth/2,
+            angle + arcWidth/2
+          );
+          
+          visualCtx.lineTo(centerX, centerY);
+          visualCtx.fillStyle = gradient;
+          visualCtx.fill();
+          
+          // Add subtle border
+          visualCtx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+          visualCtx.stroke();
         }
         
-        // Scale factor to make visualization more pronounced
-        const scaleFactor = (maxValue < 50) ? 6 : (maxValue < 100) ? 4 : 2;
+        // Add circular waveform
+        visualCtx.beginPath();
+        visualCtx.strokeStyle = `rgba(255, 255, 255, ${0.3 + avgFrequency * 0.5})`;
+        visualCtx.lineWidth = 2;
         
         for (let i = 0; i < dataArray.length; i++) {
-          // Skip every other bar to make them wider with spacing
-          if (i % 2 === 0) {
-            // Make bars taller for better visibility
-            const barHeight = Math.max(4, dataArray[i] * (visualizationCanvas.height / 255) * scaleFactor);
+          const angle = (i / dataArray.length) * Math.PI * 2;
+          const value = dataArray[i] / 255;
+          const radius = maxRadius * 0.3 + value * maxRadius * 0.7;
+          
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          
+          if (i === 0) {
+            visualCtx.moveTo(x, y);
+          } else {
+            visualCtx.lineTo(x, y);
+          }
+        }
+        
+        visualCtx.closePath();
+        visualCtx.stroke();
+        
+        // Add glowing orbs at peaks
+        for (let i = 0; i < dataArray.length; i += 8) {
+          const angle = (i / dataArray.length) * Math.PI * 2;
+          const value = dataArray[i] / 255;
+          
+          if (value > 0.5) { // Only show for louder sounds
+            const radius = maxRadius * 0.3 + value * maxRadius * 0.7;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
             
-            // Add glow effect
             const glow = visualCtx.createRadialGradient(
-              i * barWidth + barWidth/2, centerY, 0,
-              i * barWidth + barWidth/2, centerY, barHeight/1.5
+              x, y, 0,
+              x, y, 20 * value
             );
-            glow.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+            glow.addColorStop(0, `rgba(255, 255, 255, ${value})`);
             glow.addColorStop(1, "rgba(255, 255, 255, 0)");
             
-            // Draw glow first
             visualCtx.fillStyle = glow;
             visualCtx.beginPath();
-            visualCtx.arc(i * barWidth + barWidth/2, centerY, barHeight/1.5, 0, Math.PI * 2);
+            visualCtx.arc(x, y, 20 * value, 0, Math.PI * 2);
             visualCtx.fill();
-            
-            // Draw bar
-            visualCtx.fillStyle = gradient;
-            visualCtx.fillRect(
-              i * barWidth, 
-              centerY - barHeight / 2,
-              barWidth - 4, // Gap between bars
-              barHeight
-            );
-            
-            // Draw border to make bars more distinct
-            visualCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            visualCtx.strokeRect(
-              i * barWidth, 
-              centerY - barHeight / 2,
-              barWidth - 4,
-              barHeight
-            );
           }
         }
-        
-        // Add a more prominent waveform outline
-        visualCtx.beginPath();
-        visualCtx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-        visualCtx.lineWidth = 3;
-        
-        for (let i = 0; i < dataArray.length; i++) {
-          const x = i * (visualizationCanvas.width / dataArray.length);
-          const y = centerY - (dataArray[i] / 255) * (centerY - 20);
-          
-          if (i === 0) {
-            visualCtx.moveTo(x, y);
-          } else {
-            visualCtx.lineTo(x, y);
-          }
-        }
-        
-        visualCtx.stroke();
-        
-        // Add reflection
-        visualCtx.beginPath();
-        visualCtx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-        
-        for (let i = 0; i < dataArray.length; i++) {
-          const x = i * (visualizationCanvas.width / dataArray.length);
-          const y = centerY + (dataArray[i] / 255) * (centerY - 20);
-          
-          if (i === 0) {
-            visualCtx.moveTo(x, y);
-          } else {
-            visualCtx.lineTo(x, y);
-          }
-        }
-        
-        visualCtx.stroke();
-        
-        // Display audio status in visualization
-        visualCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        visualCtx.font = "12px Arial";
-        visualCtx.fillText(`Audio Visualization Active - ${audioPlayer.currentTime.toFixed(1)}s / ${audioPlayer.duration ? audioPlayer.duration.toFixed(1) : '?'}s`, 10, 20);
-      
       } catch (error) {
-        // Handle errors in visualization
-        visualCtx.fillStyle = "rgba(255, 50, 50, 0.8)";
-        visualCtx.font = "14px Arial";
-        visualCtx.fillText(`Visualization error: ${error.message}`, 20, 50);
-        updateDebugInfo(`Visualization error: ${error.message}`);
+        console.error("Visualization error:", error);
       }
       
       // Request next frame
@@ -826,7 +761,13 @@ Corné.</p>
       }
     }
     const particles = [];
-    function spawnParticles(x, y, color, count, speedMultiplier) {
+    function spawnParticles(emitter, count, speedMultiplier) {
+      // Get current position from emitter
+      const position = emitter.getPosition();
+      const x = position.x;
+      const y = position.y;
+      const color = emitter.color;
+      
       for (let i = 0; i < count; i++) {
         const t = Date.now() * 0.0008;
         const angle = Math.cos(t) * Math.PI * 2 + Math.random() * 0.4;
@@ -880,19 +821,13 @@ Corné.</p>
           const particleCount = Math.max(3, Math.floor(avgFreq / 255 * 15));
           
           while (spawnAccumulator > baseInterval) {
-            spawnParticles(
-              activeEmitter.x, 
-              activeEmitter.y, 
-              activeEmitter.color, 
-              particleCount, 
-              speedMultiplier
-            );
+            spawnParticles(activeEmitter, particleCount, speedMultiplier);
             spawnAccumulator -= baseInterval;
           }
         } else {
           // Default particle behavior when no audio playing
           while (spawnAccumulator > 0.1) {
-            spawnParticles(activeEmitter.x, activeEmitter.y, activeEmitter.color, 5, 1);
+            spawnParticles(activeEmitter, 5, 1);
             spawnAccumulator -= 0.1;
           }
         }
@@ -1002,22 +937,14 @@ Corné.</p>
       startVisualization();
     }
     
-    // Add a keyboard shortcut to toggle debug info display
+    // Add a keyboard shortcut to cycle through visualization styles
+    let currentVisualizationStyle = 1; // Start with style 1
+    
     window.addEventListener('keydown', function(e) {
-      // Press 'D' key to toggle debug info
-      if (e.key === 'd' || e.key === 'D') {
-        const debugElement = document.getElementById("debug-info");
-        if (debugElement) {
-          debugElement.style.display = debugElement.style.display === "none" ? "block" : "none";
-          updateDebugInfo("Debug display toggled");
-        }
-      }
-      
-      // Press 'V' key to force restart visualization
+      // Press 'V' key to cycle visualization styles (when implemented)
       if (e.key === 'v' || e.key === 'V') {
-        window.visualizationRunning = false;
-        startVisualization();
-        updateDebugInfo("Visualization manually restarted");
+        currentVisualizationStyle = (currentVisualizationStyle % 3) + 1;
+        console.log(`Switched to visualization style ${currentVisualizationStyle}`);
       }
     });
     
@@ -1167,9 +1094,22 @@ Corné.</p>
       updateSceneParameters(section);
       freezeMotion = false;
       
-      // Set particle emitter based on section center
-      const rect = secElem.getBoundingClientRect();
-      activeEmitter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, color: getEmitterColor(section) };
+      // Improved particle emitter positioning that updates dynamically
+      activeEmitter = { 
+        getPosition: function() {
+          // Get updated position on each frame to account for zooming/scrolling
+          const elem = document.getElementById("section-" + section);
+          if (elem) {
+            const rect = elem.getBoundingClientRect();
+            return {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2
+            };
+          }
+          return { x: 0, y: 0 };
+        },
+        color: getEmitterColor(section)
+      };
       
       fetch(textPath)
         .then(response => {
