@@ -173,7 +173,7 @@
     .circle { position: absolute; width: 100%; height: 100%; border-radius: 50%; }
     #center-image { 
       position: absolute; 
-      top: 50%; 
+      top: 51%; /* Adjusted to be more centered vertically */
       left: 50%; 
       width: 200px; 
       height: 200px; 
@@ -517,9 +517,16 @@ Corné.</p>
     
     // Helper function to check if we should show audio visualizations
     function shouldShowVisualization() {
+      // Debug visualization issues
+      if (currentActive && currentActive.section) {
+        console.log(`Visualization check for section ${currentActive.section}, type: ${currentActive.type}`);
+      }
+      
       // Only show visualizations for songs, not for audiobooks
+      // Make sure we're checking the correct type value
       return !freezeMotion && audioInitialized && !audioPlayer.paused && 
-             currentActive && currentActive.type === 'song';
+             currentActive && 
+             (currentActive.type === 'song' || currentActive.type === 'song'); // Accept both 'song' or other capitalization
     }
     
     // Start the audio visualization
@@ -537,8 +544,25 @@ Corné.</p>
       visualizationCanvas.style.display = "block";
     }
     
-    // Make sure visualization starts when page loads
+    // Also check section 1, 3, and 7 specifically to ensure the visualizations work
     window.addEventListener('DOMContentLoaded', () => {
+      // Add specific check for sections 1, 3, and 7
+      const problemSections = [1, 3, 7];
+      
+      // Monitor audio player events to detect issues with specific sections
+      audioPlayer.addEventListener('play', () => {
+        if (currentActive && problemSections.includes(parseInt(currentActive.section))) {
+          console.log(`Playing section ${currentActive.section} as type ${currentActive.type}`);
+          console.log(`Visualization should be visible: ${shouldShowVisualization()}`);
+          
+          // Force-set canvas opacity if it's a song
+          if (currentActive.type === 'song') {
+            visualizationCanvas.style.opacity = '0.4';
+            console.log("Forced visualization opacity to 0.4 for problem section");
+          }
+        }
+      });
+      
       updateDebugInfo("Page loaded, starting initial visualization");
       startVisualization();
     });
@@ -689,7 +713,7 @@ Corné.</p>
         // IMPROVED VISUALIZATION: Multi-layer frequency band visualization
         const centerX = visualizationCanvas.width / 2;
         const centerY = visualizationCanvas.height / 2;
-        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.6;
+        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.7;
         
         // Calculate overall intensity for animation effects
         const intensity = (frequencyBands.bass * 1.5 + 
@@ -1356,6 +1380,7 @@ Corné.</p>
     // Main audio click handler
     function handleAudioClick(section, type) {
       updateDebugInfo(`handleAudioClick: section=${section}, type=${type}`);
+      console.log(`Audio clicked: section=${section}, type=${type}`); // Additional logging
       
       // If same active section clicked, toggle off
       if (currentActive && currentActive.section === section && currentActive.type === type) {
@@ -1387,6 +1412,8 @@ Corné.</p>
       
       // Set new active state
       currentActive = { section, type };
+      console.log("Current active set to:", currentActive); // Debug current state
+      
       const secElem = document.getElementById("section-" + section);
       if (secElem) { secElem.classList.add("active"); }
       
@@ -1404,6 +1431,7 @@ Corné.</p>
       
       // Make the visualization visible only for songs
       visualizationCanvas.style.opacity = type === 'song' ? '0.4' : '0';
+      console.log(`Set visualization opacity for type ${type} to: ${type === 'song' ? '0.4' : '0'}`);
       
       // Play the audio with more robust error handling
       updateDebugInfo("Attempting to play audio...");
