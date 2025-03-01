@@ -1,4 +1,24 @@
-<!DOCTYPE html>
+// Start the audio visualization
+    function startVisualization() {
+      updateDebugInfo("Starting visualization...");
+      
+      // Start the visualization regardless of initialization state
+      // This helps ensure it's always running
+      if (!window.visualizationRunning) {
+        window.visualizationRunning = true;
+        updateDebugInfo("Starting visualization animation loop");
+        requestAnimationFrame(drawAudioVisualization);
+      }
+      
+      // Show visualization container
+      visualizationCanvas.style.display = "block";
+    }
+    
+    // Make sure visualization starts when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      updateDebugInfo("Page loaded, starting initial visualization");
+      startVisualization();
+    });<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -400,8 +420,8 @@ Corné.</p>
       // Always clear the canvas first
       visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
       
-      // Just return if there's no audio playing, but keep the animation loop going
-      if (!audioInitialized || freezeMotion || audioPlayer.paused) {
+      // Check if we should show visualization (only for songs, not audiobooks)
+      if (!shouldShowVisualization()) {
         requestAnimationFrame(drawAudioVisualization);
         return;
       }
@@ -435,7 +455,7 @@ Corné.</p>
         // This is where you can modify for different visual styles
         const centerX = visualizationCanvas.width / 2;
         const centerY = visualizationCanvas.height / 2;
-        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.4;
+        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.8;
         
         // Calculate average frequency for intensity
         let sum = 0;
@@ -626,7 +646,8 @@ Corné.</p>
     
     // Update audio visualization in 3D scene
     function updateAudioVisualization() {
-      if (!audioInitialized || !analyser || freezeMotion || audioPlayer.paused) {
+      // Only update for songs, not audiobooks
+      if (!shouldShowVisualization()) {
         return;
       }
       
@@ -702,8 +723,8 @@ Corné.</p>
       requestAnimationFrame(animateThree);
       
       if (!freezeMotion) {
-        // Basic animation when no audio is playing
-        if (!audioInitialized || audioPlayer.paused) {
+        // Basic animation when no audio is playing or when playing audiobooks
+        if (!shouldShowVisualization()) {
           polyhedron.rotation.x += rotationSpeed;
           polyhedron.rotation.y += rotationSpeed;
           
@@ -713,7 +734,7 @@ Corné.</p>
             sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
           });
         } else {
-          // Audio-driven animation when audio is playing
+          // Audio-driven animation only when songs are playing
           updateAudioVisualization();
         }
         
@@ -804,8 +825,8 @@ Corné.</p>
       if (activeEmitter) {
         spawnAccumulator += delta;
         
-        // If audio is playing, make particle emission react to audio
-        if (audioInitialized && !audioPlayer.paused && !freezeMotion) {
+        // If audio is playing, make particle emission react to audio (only for songs)
+        if (shouldShowVisualization()) {
           analyser.getByteFrequencyData(dataArray);
           
           // Calculate average frequency
@@ -987,27 +1008,12 @@ Corné.</p>
       });
     }
     
-    // Start the audio visualization
-    function startVisualization() {
-      updateDebugInfo("Starting visualization...");
-      
-      // Start the visualization regardless of initialization state
-      // This helps ensure it's always running
-      if (!window.visualizationRunning) {
-        window.visualizationRunning = true;
-        updateDebugInfo("Starting visualization animation loop");
-        requestAnimationFrame(drawAudioVisualization);
-      }
-      
-      // Show visualization container explicitly
-      visualizationCanvas.style.display = "block";
+    // Helper function to check if we should show audio visualizations
+    function shouldShowVisualization() {
+      // Only show visualizations for songs, not for audiobooks
+      return !freezeMotion && audioInitialized && !audioPlayer.paused && 
+             currentActive && currentActive.type === 'song';
     }
-    
-    // Make sure visualization starts when page loads
-    window.addEventListener('DOMContentLoaded', () => {
-      updateDebugInfo("Page loaded, starting initial visualization");
-      startVisualization();
-    });
     
     // Main audio click handler
     function handleAudioClick(section, type) {
@@ -1055,11 +1061,11 @@ Corné.</p>
         initAudioContext();
         
         // Start the visualization immediately
-        requestAnimationFrame(drawAudioVisualization);
+        startVisualization();
       }
       
-      // Make sure the visualization is running
-      startVisualization();
+      // Make the visualization visible only for songs
+      visualizationCanvas.style.opacity = type === 'song' ? '0.4' : '0';
       
       // Play the audio with more robust error handling
       updateDebugInfo("Attempting to play audio...");
@@ -1135,15 +1141,21 @@ Corné.</p>
         activeEmitter = null;
         freezeMotion = true;
         textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+        
+        // Hide visualization for audiobooks
+        visualizationCanvas.style.opacity = '0';
         return;
       }
       if (currentActive) {
         clearCurrentActive();
       }
-      currentActive = { prologue: true };
+      currentActive = { prologue: true, type: 'audiobook' }; // Mark as audiobook
       activeEmitter = null;
       freezeMotion = true;
       audioPlayer.src = "audio/audio00.mp3";
+      
+      // Hide visualization for audiobooks
+      visualizationCanvas.style.opacity = '0';
       
       // Initialize audio context if needed
       audioPlayer.play().then(() => {
@@ -1185,6 +1197,9 @@ Corné.</p>
       removeStyleClasses();
       document.body.classList.add('default-style');
       
+      // Hide visualization when audio ends
+      visualizationCanvas.style.opacity = '0';
+      
       // Reset polyhedron scale
       if (polyhedron) {
         polyhedron.scale.set(1, 1, 1);
@@ -1201,6 +1216,9 @@ Corné.</p>
       
       // Reset visualizations when animations are off
       if (freezeMotion) {
+        // Hide visualization when animations are off
+        visualizationCanvas.style.opacity = '0';
+        
         if (polyhedron) {
           polyhedron.scale.set(1, 1, 1);
         }
@@ -1211,6 +1229,11 @@ Corné.</p>
           sphere.scale.set(1, 1, 1);
           sphere.material.opacity = 0.8;
         });
+      } else {
+        // Show visualization when animations are on (but only for songs)
+        if (currentActive && currentActive.type === 'song') {
+          visualizationCanvas.style.opacity = '0.4';
+        }
       }
     }
     
