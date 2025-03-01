@@ -1,24 +1,4 @@
-// Start the audio visualization
-    function startVisualization() {
-      updateDebugInfo("Starting visualization...");
-      
-      // Start the visualization regardless of initialization state
-      // This helps ensure it's always running
-      if (!window.visualizationRunning) {
-        window.visualizationRunning = true;
-        updateDebugInfo("Starting visualization animation loop");
-        requestAnimationFrame(drawAudioVisualization);
-      }
-      
-      // Show visualization container
-      visualizationCanvas.style.display = "block";
-    }
-    
-    // Make sure visualization starts when page loads
-    window.addEventListener('DOMContentLoaded', () => {
-      updateDebugInfo("Page loaded, starting initial visualization");
-      startVisualization();
-    });<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -414,6 +394,34 @@ Corné.</p>
     
     resizeVisualizationCanvas();
     window.addEventListener("resize", resizeVisualizationCanvas);
+    
+    // Helper function to check if we should show audio visualizations
+    function shouldShowVisualization() {
+      // Only show visualizations for songs, not for audiobooks
+      return !freezeMotion && audioInitialized && !audioPlayer.paused && 
+             currentActive && currentActive.type === 'song';
+    }
+    
+    // Start the audio visualization
+    function startVisualization() {
+      updateDebugInfo("Starting visualization...");
+      
+      // Start the visualization regardless of initialization state
+      if (!window.visualizationRunning) {
+        window.visualizationRunning = true;
+        updateDebugInfo("Starting visualization animation loop");
+        requestAnimationFrame(drawAudioVisualization);
+      }
+      
+      // Show visualization container
+      visualizationCanvas.style.display = "block";
+    }
+    
+    // Make sure visualization starts when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      updateDebugInfo("Page loaded, starting initial visualization");
+      startVisualization();
+    });
     
     // Draw frequency visualization bars
     function drawAudioVisualization() {
@@ -1008,13 +1016,6 @@ Corné.</p>
       });
     }
     
-    // Helper function to check if we should show audio visualizations
-    function shouldShowVisualization() {
-      // Only show visualizations for songs, not for audiobooks
-      return !freezeMotion && audioInitialized && !audioPlayer.paused && 
-             currentActive && currentActive.type === 'song';
-    }
-    
     // Main audio click handler
     function handleAudioClick(section, type) {
       updateDebugInfo(`handleAudioClick: section=${section}, type=${type}`);
@@ -1177,9 +1178,13 @@ Corné.</p>
           if (!response.ok) { throw new Error("Network response was not ok"); }
           return response.text();
         })
-        .then(data => { textContainer.textContent = data; })
+        .then(data => { 
+          textContainer.textContent = data;
+          updateDebugInfo("Prologue text loaded successfully");
+        })
         .catch(error => {
           textContainer.textContent = "Error loading prologue text.";
+          updateDebugInfo(`Error fetching prologue text: ${error.message}`);
           console.error("Error fetching prologue text:", error);
         });
     }
