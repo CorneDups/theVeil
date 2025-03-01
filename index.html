@@ -443,8 +443,8 @@ Corné.</p>
        Global Variables
     =================================== */
     // Declare global variables at the top of the script
-    audioContext, analyser, dataArray;
-    audioInitialized = false;
+    let audioContext, analyser, dataArray;
+    let audioInitialized = false;
     let currentActive = null;
     let lastSection = null, secondLastSection = null;
     let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
@@ -454,14 +454,22 @@ Corné.</p>
     let activeEmitter = null;
     let spawnAccumulator = 0;
     let lastTime = performance.now();
-    particles = [];
+    let particles = [];
     let currentVisualizationStyle = 1;
+    let visualizationRunning = false;
+    
+    // DOM elements
+    const audioPlayer = document.getElementById('audio-player');
+    const centerImage = document.querySelector('#center-image img');
+    const textContainer = document.getElementById('text-container');
+    const visualizationCanvas = document.getElementById("audio-visualization");
+    const visualCtx = visualizationCanvas.getContext("2d");
+    const canvas = document.getElementById("particle-canvas");
+    const ctx = canvas.getContext("2d");
     
     /* ===================================
        Audio Context & Analyzer Setup
     =================================== */
-    let audioContext, analyser, dataArray;
-    let audioInitialized = false;
     
     // Simplified logging function (only logs to console now)
     function updateDebugInfo(message) {
@@ -511,7 +519,7 @@ Corné.</p>
         updateDebugInfo("✅ Audio context initialization successful");
         
         // Start the visualization explicitly
-        requestAnimationFrame(drawAudioVisualization);
+        startVisualization();
         
       } catch (error) {
         updateDebugInfo(`❌ Failed to initialize audio context: ${error.message}`);
@@ -522,16 +530,26 @@ Corné.</p>
     /* ===================================
        Audio Visualization Canvas Setup
     =================================== */
-    const visualizationCanvas = document.getElementById("audio-visualization");
-    const visualCtx = visualizationCanvas.getContext("2d");
     
     function resizeVisualizationCanvas() {
       visualizationCanvas.width = window.innerWidth;
       visualizationCanvas.height = window.innerHeight;
     }
     
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    // Initialize canvas sizes
     resizeVisualizationCanvas();
-    window.addEventListener("resize", resizeVisualizationCanvas);
+    resizeCanvas();
+    
+    // Add resize listeners
+    window.addEventListener("resize", () => {
+      resizeVisualizationCanvas();
+      resizeCanvas();
+    });
     
     // Helper function to check if we should show audio visualizations
     function shouldShowVisualization() {
@@ -540,13 +558,13 @@ Corné.</p>
         return false;
       }
       
-      // Debug visualization issues
-      if (currentActive.section) {
-        console.log(`Visualization check for section ${currentActive.section}, type: ${currentActive.type}`);
+      // Special handling for problem sections 1, 3, and 7
+      if (currentActive.section && [1, 3, 7].includes(parseInt(currentActive.section)) && 
+          currentActive.type === 'song' && !audioPlayer.paused) {
+        return true;
       }
       
       // Only show visualizations for songs, not for audiobooks
-      // Make sure we're checking the correct type value
       return !freezeMotion && audioInitialized && !audioPlayer.paused && 
              currentActive.type === 'song';
     }
@@ -556,8 +574,8 @@ Corné.</p>
       updateDebugInfo("Starting visualization...");
       
       // Start the visualization regardless of initialization state
-      if (!window.visualizationRunning) {
-        window.visualizationRunning = true;
+      if (!visualizationRunning) {
+        visualizationRunning = true;
         updateDebugInfo("Starting visualization animation loop");
         requestAnimationFrame(drawAudioVisualization);
       }
@@ -566,28 +584,9 @@ Corné.</p>
       visualizationCanvas.style.display = "block";
     }
     
-    // Also check section 1, 3, and 7 specifically to ensure the visualizations work
-    window.addEventListener('DOMContentLoaded', () => {
-      // Add specific check for sections 1, 3, and 7
-      const problemSections = [1, 3, 7];
-      
-      // Monitor audio player events to detect issues with specific sections
-      audioPlayer.addEventListener('play', () => {
-        if (currentActive && problemSections.includes(parseInt(currentActive.section))) {
-          console.log(`Playing section ${currentActive.section} as type ${currentActive.type}`);
-          console.log(`Visualization should be visible: ${shouldShowVisualization()}`);
-          
-          // Force-set canvas opacity if it's a song
-          if (currentActive.type === 'song') {
-            visualizationCanvas.style.opacity = '0.4';
-            console.log("Forced visualization opacity to 0.4 for problem section");
-          }
-        }
-      });
-      
-      updateDebugInfo("Page loaded, starting initial visualization");
-      startVisualization();
-    });
+    /* ===================================
+       Frequency Analysis Functions
+    =================================== */
     
     // Helper function for frequency band grouping
     function groupFrequencies(dataArray) {
@@ -648,6 +647,10 @@ Corné.</p>
       return indices;
     }
     
+    /* ===================================
+       Audio Visualization Drawing
+    =================================== */
+    
     // Draw frequency visualization bars
     function drawAudioVisualization() {
       // Always clear the canvas first
@@ -666,76 +669,13 @@ Corné.</p>
         // Group frequencies into bands
         const frequencyBands = groupFrequencies(dataArray);
         
-        // Style based on current section
-        let gradientColor1, gradientColor2, gradientColor3;
-        if (currentActive && currentActive.section) {
-          switch(parseInt(currentActive.section)) {
-            case 1: 
-              gradientColor1 = '#333'; 
-              gradientColor2 = '#888'; 
-              gradientColor3 = '#666';
-              break;
-            case 2: 
-              gradientColor1 = '#550000'; 
-              gradientColor2 = '#ff6600'; 
-              gradientColor3 = '#aa3300';
-              break;
-            case 3: 
-              gradientColor1 = '#000'; 
-              gradientColor2 = '#777';
-              gradientColor3 = '#444'; 
-              break;
-            case 4: 
-              gradientColor1 = '#770000'; 
-              gradientColor2 = '#ff0000';
-              gradientColor3 = '#aa0000'; 
-              break;
-            case 5: 
-              gradientColor1 = '#330033'; 
-              gradientColor2 = '#990099';
-              gradientColor3 = '#660066'; 
-              break;
-            case 6: 
-              gradientColor1 = '#000080'; 
-              gradientColor2 = '#ffd700';
-              gradientColor3 = '#8b4513'; 
-              break;
-            case 7: 
-              gradientColor1 = '#000'; 
-              gradientColor2 = '#333';
-              gradientColor3 = '#666'; 
-              break;
-            case 8: 
-              gradientColor1 = '#654321'; 
-              gradientColor2 = '#d2b48c';
-              gradientColor3 = '#8b4513'; 
-              break;
-            case 9: 
-              gradientColor1 = '#001f3f'; 
-              gradientColor2 = '#ffcc00';
-              gradientColor3 = '#ff8c00'; 
-              break;
-            case 10: 
-              gradientColor1 = '#ffb6c1'; 
-              gradientColor2 = '#f0e68c';
-              gradientColor3 = '#ffa07a'; 
-              break;
-            default: 
-              gradientColor1 = '#000080'; 
-              gradientColor2 = '#00ffff';
-              gradientColor3 = '#0080ff'; 
-              break;
-          }
-        } else {
-          gradientColor1 = '#000080';
-          gradientColor2 = '#00ffff';
-          gradientColor3 = '#0080ff';
-        }
+        // Get visualization colors based on current section
+        const colors = getSectionColors(currentActive ? currentActive.section : null);
         
         // IMPROVED VISUALIZATION: Multi-layer frequency band visualization
         const centerX = visualizationCanvas.width / 2;
         const centerY = visualizationCanvas.height / 2;
-        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.4;
+        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.7;
         
         // Calculate overall intensity for animation effects
         const intensity = (frequencyBands.bass * 1.5 + 
@@ -753,8 +693,8 @@ Corné.</p>
           centerX, centerY, 0,
           centerX, centerY, maxRadius * 1.2
         );
-        bgGlow.addColorStop(0, `rgba(${parseInt(gradientColor3.substr(1, 2), 16)}, ${parseInt(gradientColor3.substr(3, 2), 16)}, ${parseInt(gradientColor3.substr(5, 2), 16)}, ${0.1 + intensity * 0.2})`);
-        bgGlow.addColorStop(0.7, `rgba(${parseInt(gradientColor3.substr(1, 2), 16)}, ${parseInt(gradientColor3.substr(3, 2), 16)}, ${parseInt(gradientColor3.substr(5, 2), 16)}, ${0.05 + intensity * 0.1})`);
+        bgGlow.addColorStop(0, `rgba(${parseInt(colors.color3.substr(1, 2), 16)}, ${parseInt(colors.color3.substr(3, 2), 16)}, ${parseInt(colors.color3.substr(5, 2), 16)}, ${0.1 + intensity * 0.2})`);
+        bgGlow.addColorStop(0.7, `rgba(${parseInt(colors.color3.substr(1, 2), 16)}, ${parseInt(colors.color3.substr(3, 2), 16)}, ${parseInt(colors.color3.substr(5, 2), 16)}, ${0.05 + intensity * 0.1})`);
         bgGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
         
         visualCtx.fillStyle = bgGlow;
@@ -770,7 +710,7 @@ Corné.</p>
         // First, draw a subtle bass pulse circle
         visualCtx.beginPath();
         visualCtx.arc(centerX, centerY, bassRadius * (0.8 + frequencyBands.bass * 0.5), 0, Math.PI * 2);
-        visualCtx.fillStyle = `rgba(${parseInt(gradientColor1.substr(1, 2), 16)}, ${parseInt(gradientColor1.substr(3, 2), 16)}, ${parseInt(gradientColor1.substr(5, 2), 16)}, ${0.1 + frequencyBands.bass * 0.3})`;
+        visualCtx.fillStyle = `rgba(${parseInt(colors.color1.substr(1, 2), 16)}, ${parseInt(colors.color1.substr(3, 2), 16)}, ${parseInt(colors.color1.substr(5, 2), 16)}, ${0.1 + frequencyBands.bass * 0.3})`;
         visualCtx.fill();
         
         // Bass frequency bars (innermost ring)
@@ -788,8 +728,8 @@ Corné.</p>
             centerX + Math.cos(angle) * barHeight,
             centerY + Math.sin(angle) * barHeight
           );
-          gradient.addColorStop(0, `rgba(${parseInt(gradientColor1.substr(1, 2), 16)}, ${parseInt(gradientColor1.substr(3, 2), 16)}, ${parseInt(gradientColor1.substr(5, 2), 16)}, 0.8)`);
-          gradient.addColorStop(1, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.2)`);
+          gradient.addColorStop(0, `rgba(${parseInt(colors.color1.substr(1, 2), 16)}, ${parseInt(colors.color1.substr(3, 2), 16)}, ${parseInt(colors.color1.substr(5, 2), 16)}, 0.8)`);
+          gradient.addColorStop(1, `rgba(${parseInt(colors.color2.substr(1, 2), 16)}, ${parseInt(colors.color2.substr(3, 2), 16)}, ${parseInt(colors.color2.substr(5, 2), 16)}, 0.2)`);
           
           visualCtx.beginPath();
           visualCtx.moveTo(centerX, centerY);
@@ -838,8 +778,8 @@ Corné.</p>
             centerX + Math.cos(angle) * (barStart + barLength),
             centerY + Math.sin(angle) * (barStart + barLength)
           );
-          gradient.addColorStop(0, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.1)`);
-          gradient.addColorStop(1, `rgba(${parseInt(gradientColor2.substr(1, 2), 16)}, ${parseInt(gradientColor2.substr(3, 2), 16)}, ${parseInt(gradientColor2.substr(5, 2), 16)}, 0.7)`);
+          gradient.addColorStop(0, `rgba(${parseInt(colors.color2.substr(1, 2), 16)}, ${parseInt(colors.color2.substr(3, 2), 16)}, ${parseInt(colors.color2.substr(5, 2), 16)}, 0.1)`);
+          gradient.addColorStop(1, `rgba(${parseInt(colors.color2.substr(1, 2), 16)}, ${parseInt(colors.color2.substr(3, 2), 16)}, ${parseInt(colors.color2.substr(5, 2), 16)}, 0.7)`);
           
           const barEnd = barStart + barLength;
           const arcWidth = angleStep * 0.8;
@@ -878,7 +818,7 @@ Corné.</p>
             centerX + Math.cos(angle) * (barStart + barLength),
             centerY + Math.sin(angle) * (barStart + barLength)
           );
-          gradient.addColorStop(0, `rgba(${parseInt(gradientColor3.substr(1, 2), 16)}, ${parseInt(gradientColor3.substr(3, 2), 16)}, ${parseInt(gradientColor3.substr(5, 2), 16)}, 0.2)`);
+          gradient.addColorStop(0, `rgba(${parseInt(colors.color3.substr(1, 2), 16)}, ${parseInt(colors.color3.substr(3, 2), 16)}, ${parseInt(colors.color3.substr(5, 2), 16)}, 0.2)`);
           gradient.addColorStop(1, `rgba(255, 255, 255, 0.8)`);
           
           const barEnd = barStart + barLength;
@@ -954,7 +894,90 @@ Corné.</p>
     }
     
     /* ===================================
-       Three.js & Animation Initialization
+       Color Management
+    =================================== */
+    
+    // Helper function to get section colors
+    function getSectionColors(section) {
+      const colors = {
+        1: { 
+          color1: '#333', 
+          color2: '#888', 
+          color3: '#666' 
+        },
+        2: { 
+          color1: '#550000', 
+          color2: '#ff6600', 
+          color3: '#aa3300' 
+        },
+        3: { 
+          color1: '#000', 
+          color2: '#777',
+          color3: '#444' 
+        },
+        4: { 
+          color1: '#770000', 
+          color2: '#ff0000',
+          color3: '#aa0000' 
+        },
+        5: { 
+          color1: '#330033', 
+          color2: '#990099',
+          color3: '#660066' 
+        },
+        6: { 
+          color1: '#000080', 
+          color2: '#ffd700',
+          color3: '#8b4513' 
+        },
+        7: { 
+          color1: '#000', 
+          color2: '#333',
+          color3: '#666' 
+        },
+        8: { 
+          color1: '#654321', 
+          color2: '#d2b48c',
+          color3: '#8b4513' 
+        },
+        9: { 
+          color1: '#001f3f', 
+          color2: '#ffcc00',
+          color3: '#ff8c00' 
+        },
+        10: { 
+          color1: '#ffb6c1', 
+          color2: '#f0e68c',
+          color3: '#ffa07a' 
+        },
+        default: { 
+          color1: '#000080', 
+          color2: '#00ffff',
+          color3: '#0080ff'
+        }
+      };
+      
+      return colors[section] || colors.default;
+    }
+    
+    function getEmitterColor(section) {
+      const colorMap = {
+        1: "255,255,255",
+        2: "255,69,0",
+        3: "100,100,100",
+        4: "255,0,0",
+        5: "128,0,128",
+        6: "255,215,0",
+        7: "200,200,200",
+        8: "210,180,140",
+        9: "255,223,0",
+        10: "255,192,203"
+      };
+      return colorMap[section] || "255,255,0";
+    }
+    
+    /* ===================================
+       Three.js & 3D Animation
     =================================== */
     
     function initThree() {
@@ -1034,7 +1057,7 @@ Corné.</p>
     // Update audio visualization in 3D scene
     function updateAudioVisualization() {
       // Only update for songs, not audiobooks
-      if (!currentActive || !shouldShowVisualization()) {
+      if (!shouldShowVisualization()) {
         return;
       }
       
@@ -1111,7 +1134,7 @@ Corné.</p>
       
       if (!freezeMotion) {
         // Basic animation when no audio is playing or when playing audiobooks
-        if (!audioInitialized || !currentActive || !shouldShowVisualization()) {
+        if (!shouldShowVisualization()) {
           polyhedron.rotation.x += rotationSpeed;
           polyhedron.rotation.y += rotationSpeed;
           
@@ -1134,20 +1157,10 @@ Corné.</p>
       renderer.render(scene, camera);
     }
     
-    initThree();
-    animateThree();
-    
     /* ===================================
-       Particle System Initialization
+       Particle System
     =================================== */
-    const canvas = document.getElementById("particle-canvas");
-    const ctx = canvas.getContext("2d");
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
+    
     class Particle {
       constructor(x, y, vx, vy, life, color) {
         this.x = x; this.y = y;
@@ -1168,7 +1181,7 @@ Corné.</p>
         ctx.fill();
       }
     }
-    const particles = [];
+    
     function spawnParticles(emitter, count, speedMultiplier) {
       // Get current position from emitter
       const position = emitter.getPosition();
@@ -1186,23 +1199,6 @@ Corné.</p>
         particles.push(new Particle(x, y, vx, vy, life, color));
       }
     }
-    activeEmitter = null;
-    spawnAccumulator = 0;
-    function getEmitterColor(section) {
-      switch (section) {
-        case 1: return "255,255,255";
-        case 2: return "255,69,0";
-        case 3: return "100,100,100";
-        case 4: return "255,0,0";
-        case 5: return "128,0,128";
-        case 6: return "255,215,0";
-        case 7: return "200,200,200";
-        case 8: return "210,180,140";
-        case 9: return "255,223,0";
-        case 10: return "255,192,203";
-        default: return "255,255,0";
-      }
-    }
     
     function animateParticles(time) {
       const delta = (time - lastTime) / 1000;
@@ -1213,7 +1209,7 @@ Corné.</p>
         spawnAccumulator += delta;
         
         // If audio is playing, make particle emission react to audio (only for songs)
-        if (currentActive && shouldShowVisualization()) {
+        if (shouldShowVisualization()) {
           analyser.getByteFrequencyData(dataArray);
           
           // Calculate average frequency
@@ -1241,6 +1237,7 @@ Corné.</p>
         }
       }
       
+      // Process and draw particles
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.update(delta);
@@ -1253,15 +1250,16 @@ Corné.</p>
       
       requestAnimationFrame(animateParticles);
     }
-    requestAnimationFrame(animateParticles);
     
     /* ===================================
-       Audio & UI Interaction
+       Special Combinations & Effects
     =================================== */
     
     // List of special combinations
     const specialCombinations = {
-      "777": true, "003": true, "001": true, "002": true, "004": true, "006": true, "008": true, "333": true, "111": true, "222": true, "888": true, "000": true, "666": true, "999": true, "555": true, "444": true
+      "777": true, "003": true, "001": true, "002": true, "004": true, "006": true, 
+      "008": true, "333": true, "111": true, "222": true, "888": true, "000": true, 
+      "666": true, "999": true, "555": true, "444": true
     };
     
     // Helper: convert section "10" to "0"
@@ -1269,19 +1267,54 @@ Corné.</p>
       return section === 10 ? "0" : section.toString();
     }
     
+    // Trigger the golden shine special animation using GSAP
+    function triggerSpecialAnimation() {
+      const overlay = document.getElementById("special-overlay");
+      overlay.style.display = "block";
+      const shine = document.createElement("div");
+      shine.className = "shine";
+      overlay.innerHTML = "";
+      overlay.appendChild(shine);
+      gsap.set(shine, { x: -window.innerWidth, y: window.innerHeight, opacity: 1 });
+      gsap.to(shine, {
+        duration: 25,
+        x: window.innerWidth,
+        y: -window.innerHeight,
+        ease: "power2.out",
+        onComplete: function() {
+          gsap.to(overlay, {
+            duration: 16,
+            opacity: 0,
+            onComplete: function() {
+              overlay.style.display = "none";
+              overlay.style.opacity = 0.8;
+            }
+          });
+        }
+      });
+    }
+    
+    /* ===================================
+       Media Path Management
+    =================================== */
+    
     // Helper: Build media paths based on section and type
     function getMediaPaths(section, type) {
       const baseSection = convertSection(section);
       let audioPath, textPath, imagePath;
+      
       if (type === 'song') {
         audioPath = "audio/song" + baseSection + ".mp3";
         textPath = "text/song" + baseSection + ".txt";
         imagePath = "images/section" + baseSection + "-image.jpg";
+        
+        // Check for special combinations
         if (secondLastSection !== null && lastSection !== null) {
           const convSecondLast = convertSection(secondLastSection);
           const convLast = convertSection(lastSection);
           const convCurrent = baseSection;
           const combo = convSecondLast + convLast + convCurrent;
+          
           if (specialCombinations[combo]) {
             audioPath = "audio/song" + combo + ".mp3";
             textPath = "text/song" + combo + ".txt";
@@ -1294,8 +1327,13 @@ Corné.</p>
         textPath = "text/audio" + baseSection + ".txt";
         imagePath = "images/section" + baseSection + "-image.jpg";
       }
+      
       return { audioPath, textPath, imagePath };
     }
+    
+    /* ===================================
+       State Management
+    =================================== */
     
     // Helper: update click history
     function updateClickHistory(section) {
@@ -1343,18 +1381,6 @@ Corné.</p>
       startVisualization();
     }
     
-    window.addEventListener('keydown', function(e) {
-      // Press 'V' key to cycle visualization styles (when implemented)
-      if (e.key === 'v' || e.key === 'V') {
-        currentVisualizationStyle = (currentVisualizationStyle % 3) + 1;
-        console.log(`Switched to visualization style ${currentVisualizationStyle}`);
-      }
-    });
-    
-    const audioPlayer = document.getElementById('audio-player');
-    const centerImage = document.querySelector('#center-image img');
-    const textContainer = document.getElementById('text-container');
-    
     function removeStyleClasses() {
       document.body.classList.remove(
         'style-section-1', 'style-section-2', 'style-section-3', 'style-section-4',
@@ -1363,37 +1389,13 @@ Corné.</p>
       );
     }
     
-    // Trigger the golden shine special animation using GSAP
-    function triggerSpecialAnimation() {
-      const overlay = document.getElementById("special-overlay");
-      overlay.style.display = "block";
-      const shine = document.createElement("div");
-      shine.className = "shine";
-      overlay.innerHTML = "";
-      overlay.appendChild(shine);
-      gsap.set(shine, { x: -window.innerWidth, y: window.innerHeight, opacity: 1 });
-      gsap.to(shine, {
-        duration: 25,
-        x: window.innerWidth,
-        y: -window.innerHeight,
-        ease: "power2.out",
-        onComplete: function() {
-          gsap.to(overlay, {
-            duration: 16,
-            opacity: 0,
-            onComplete: function() {
-              overlay.style.display = "none";
-              overlay.style.opacity = 0.8;
-            }
-          });
-        }
-      });
-    }
+    /* ===================================
+       Audio Playback Handlers
+    =================================== */
     
     // Main audio click handler
     function handleAudioClick(section, type) {
       updateDebugInfo(`handleAudioClick: section=${section}, type=${type}`);
-      console.log(`Audio clicked: section=${section}, type=${type}`); // Additional logging
       
       // If same active section clicked, toggle off
       if (currentActive && currentActive.section === section && currentActive.type === type) {
@@ -1425,7 +1427,6 @@ Corné.</p>
       
       // Set new active state
       currentActive = { section, type };
-      console.log("Current active set to:", currentActive); // Debug current state
       
       const secElem = document.getElementById("section-" + section);
       if (secElem) { secElem.classList.add("active"); }
@@ -1437,14 +1438,10 @@ Corné.</p>
       if (!audioInitialized) {
         updateDebugInfo("Initializing audio context directly before play...");
         initAudioContext();
-        
-        // Start the visualization immediately
-        startVisualization();
       }
       
       // Make the visualization visible only for songs
       visualizationCanvas.style.opacity = type === 'song' ? '0.4' : '0';
-      console.log(`Set visualization opacity for type ${type} to: ${type === 'song' ? '0.4' : '0'}`);
       
       // Play the audio with more robust error handling
       updateDebugInfo("Attempting to play audio...");
@@ -1496,6 +1493,7 @@ Corné.</p>
         color: getEmitterColor(section)
       };
       
+      // Load text content
       fetch(textPath)
         .then(response => {
           if (!response.ok) { throw new Error("Network response was not ok"); }
@@ -1525,9 +1523,11 @@ Corné.</p>
         visualizationCanvas.style.opacity = '0';
         return;
       }
+      
       if (currentActive) {
         clearCurrentActive();
       }
+      
       currentActive = { prologue: true, type: 'audiobook' }; // Mark as audiobook
       activeEmitter = null;
       freezeMotion = true;
@@ -1540,7 +1540,6 @@ Corné.</p>
       audioPlayer.play().then(() => {
         if (!audioInitialized) {
           initAudioContext();
-          startVisualization();
         } else if (audioContext && audioContext.state === 'suspended') {
           audioContext.resume();
         }
@@ -1567,6 +1566,11 @@ Corné.</p>
         });
     }
     
+    /* ===================================
+       Event Listeners
+    =================================== */
+    
+    // Handle audio end
     audioPlayer.addEventListener('ended', function () {
       if (currentActive && currentActive.section) {
         const elem = document.getElementById("section-" + currentActive.section);
@@ -1589,10 +1593,53 @@ Corné.</p>
       }
     });
     
+    // Key press handler for visualization style cycling
+    window.addEventListener('keydown', function(e) {
+      // Press 'V' key to cycle visualization styles
+      if (e.key === 'v' || e.key === 'V') {
+        currentVisualizationStyle = (currentVisualizationStyle % 3) + 1;
+        console.log(`Switched to visualization style ${currentVisualizationStyle}`);
+      }
+    });
+    
+    // Prevent right-click context menu on the audio element
+    audioPlayer.addEventListener("contextmenu", function(e) {
+      e.preventDefault();
+    });
+    
+    // Initialize everything on page load
+    window.addEventListener('DOMContentLoaded', function() {
+      // Initialize Three.js
+      initThree();
+      animateThree();
+      
+      // Initialize particle animation
+      requestAnimationFrame(animateParticles);
+      
+      // Start visualization loop
+      startVisualization();
+      
+      // Monitor audio player events for specific problem sections
+      audioPlayer.addEventListener('play', () => {
+        if (currentActive && [1, 3, 7].includes(parseInt(currentActive.section))) {
+          console.log(`Playing section ${currentActive.section} as type ${currentActive.type}`);
+          console.log(`Visualization should be visible: ${shouldShowVisualization()}`);
+          
+          // Force-set canvas opacity if it's a song
+          if (currentActive.type === 'song') {
+            visualizationCanvas.style.opacity = '0.4';
+            console.log("Forced visualization opacity to 0.4 for problem section");
+          }
+        }
+      });
+    });
+    
     /* ===================================
-       Toggle Animations Button
+       UI Controls
     =================================== */
-    function toggleAnimations(){
+    
+    // Toggle animations on/off
+    function toggleAnimations() {
       const btn = document.getElementById("toggle-anim");
       freezeMotion = !freezeMotion;
       btn.textContent = freezeMotion ? "Anim On" : "Anim Off";
@@ -1619,11 +1666,6 @@ Corné.</p>
         }
       }
     }
-    
-    // Prevent right-click context menu on the audio element (extra precaution)
-    audioPlayer.addEventListener("contextmenu", function(e) {
-      e.preventDefault();
-    });
   </script>
 </body>
 </html>
