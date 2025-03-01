@@ -46,20 +46,6 @@
     }
     
     /* ======================
-       Audio Visualization Styles
-       ====================== */
-    #audio-visualization {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 80px;
-      z-index: 4;
-      pointer-events: none;
-      opacity: 0.8;
-    }
-    
-    /* ======================
        Special Animation Overlay Styles
        ====================== */
     #special-overlay {
@@ -177,8 +163,6 @@
   <div id="three-container"></div>
   <!-- Particle Canvas -->
   <canvas id="particle-canvas"></canvas>
-  <!-- Audio Visualization Canvas -->
-  <canvas id="audio-visualization"></canvas>
   
   <!-- Prologue Container -->
   <div id="prologue-container">
@@ -324,123 +308,6 @@ Corné.</p>
        ====================== -->
   <script>
     /* ===================================
-       Audio Context & Analyzer Setup
-    =================================== */
-    let audioContext, analyser, dataArray;
-    let audioInitialized = false;
-    
-    // Initialize the audio context and analyzer
-    function initAudioContext() {
-      try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256; // Power of 2, controls detail level
-        const bufferLength = analyser.frequencyBinCount;
-        dataArray = new Uint8Array(bufferLength);
-        
-        // Connect audio element to analyzer
-        const source = audioContext.createMediaElementSource(audioPlayer);
-        source.connect(analyser);
-        analyser.connect(audioContext.destination);
-        
-        audioInitialized = true;
-        console.log("Audio context initialized successfully");
-      } catch (error) {
-        console.error("Failed to initialize audio context:", error);
-      }
-    }
-    
-    /* ===================================
-       Audio Visualization Canvas Setup
-    =================================== */
-    const visualizationCanvas = document.getElementById("audio-visualization");
-    const visualCtx = visualizationCanvas.getContext("2d");
-    
-    function resizeVisualizationCanvas() {
-      visualizationCanvas.width = window.innerWidth;
-      visualizationCanvas.height = 80;
-    }
-    
-    resizeVisualizationCanvas();
-    window.addEventListener("resize", resizeVisualizationCanvas);
-    
-    // Draw frequency visualization bars
-    function drawAudioVisualization() {
-      if (!audioInitialized || freezeMotion || audioPlayer.paused) {
-        // Clear canvas when not playing
-        visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
-        return;
-      }
-      
-      // Get frequency data
-      analyser.getByteFrequencyData(dataArray);
-      
-      visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
-      
-      // Style based on current section
-      let gradientColor1, gradientColor2;
-      if (currentActive && currentActive.section) {
-        switch(parseInt(currentActive.section)) {
-          case 1: gradientColor1 = '#333'; gradientColor2 = '#888'; break;
-          case 2: gradientColor1 = '#550000'; gradientColor2 = '#ff6600'; break;
-          case 3: gradientColor1 = '#000'; gradientColor2 = '#777'; break;
-          case 4: gradientColor1 = '#770000'; gradientColor2 = '#ff0000'; break;
-          case 5: gradientColor1 = '#330033'; gradientColor2 = '#990099'; break;
-          case 6: gradientColor1 = '#000080'; gradientColor2 = '#ffd700'; break;
-          case 7: gradientColor1 = '#000'; gradientColor2 = '#333'; break;
-          case 8: gradientColor1 = '#654321'; gradientColor2 = '#d2b48c'; break;
-          case 9: gradientColor1 = '#001f3f'; gradientColor2 = '#ffcc00'; break;
-          case 10: gradientColor1 = '#ffb6c1'; gradientColor2 = '#f0e68c'; break;
-          default: gradientColor1 = '#000080'; gradientColor2 = '#00ffff'; break;
-        }
-      } else {
-        gradientColor1 = '#000080';
-        gradientColor2 = '#00ffff';
-      }
-      
-      const gradient = visualCtx.createLinearGradient(0, 0, 0, visualizationCanvas.height);
-      gradient.addColorStop(0, gradientColor1);
-      gradient.addColorStop(1, gradientColor2);
-      
-      // Draw bars
-      const barWidth = visualizationCanvas.width / dataArray.length;
-      const centerY = visualizationCanvas.height / 2;
-      
-      for (let i = 0; i < dataArray.length; i++) {
-        const barHeight = dataArray[i] * (visualizationCanvas.height / 512);
-        
-        visualCtx.fillStyle = gradient;
-        visualCtx.fillRect(
-          i * barWidth, 
-          centerY - barHeight / 2, 
-          barWidth - 1, 
-          barHeight
-        );
-      }
-      
-      // Add a waveform outline
-      visualCtx.beginPath();
-      visualCtx.strokeStyle = "#ffffff";
-      visualCtx.lineWidth = 1;
-      
-      for (let i = 0; i < dataArray.length; i++) {
-        const x = i * barWidth;
-        const y = centerY - (dataArray[i] / 255) * (centerY - 10);
-        
-        if (i === 0) {
-          visualCtx.moveTo(x, y);
-        } else {
-          visualCtx.lineTo(x, y);
-        }
-      }
-      
-      visualCtx.stroke();
-      
-      // Request next frame
-      requestAnimationFrame(drawAudioVisualization);
-    }
-    
-    /* ===================================
        Three.js & Animation Initialization
     =================================== */
     let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
@@ -473,13 +340,11 @@ Corné.</p>
       camera.position.z = 5;
       window.addEventListener("resize", onWindowResize, false);
     }
-    
     function onWindowResize(){
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
-    
     function updateOrbitSpheres(newCount) {
       // Remove old spheres
       orbitSpheres.forEach(sphere => mainGroup.remove(sphere));
@@ -501,7 +366,6 @@ Corné.</p>
         mainGroup.add(sphere);
       }
     }
-    
     function updateSceneParameters(section) {
       const colors = {
         1: 0x222222, 2: 0xff4500, 3: 0x888888, 4: 0xff0000, 5: 0x800080,
@@ -521,109 +385,23 @@ Corné.</p>
       });
       updateOrbitSpheres(section);
     }
-    
-    // Update audio visualization in 3D scene
-    function updateAudioVisualization() {
-      if (!audioInitialized || !analyser || freezeMotion || audioPlayer.paused) {
-        return;
-      }
-      
-      // Get frequency data from audio
-      analyser.getByteFrequencyData(dataArray);
-      
-      // Calculate average frequency value
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        sum += dataArray[i];
-      }
-      const averageFreq = sum / dataArray.length;
-      const normalizedAvg = averageFreq / 255; // Scale to 0-1
-      
-      // 1. Modify polyhedron based on audio
-      // Pulse size based on bass frequencies (first few values of dataArray)
-      let bassAvg = 0;
-      for (let i = 0; i < Math.min(8, dataArray.length); i++) {
-        bassAvg += dataArray[i];
-      }
-      bassAvg = bassAvg / Math.min(8, dataArray.length) / 255;
-      
-      polyhedron.scale.set(
-        1 + bassAvg * 0.3,
-        1 + bassAvg * 0.3,
-        1 + bassAvg * 0.3
-      );
-      
-      // Speed of rotation based on mid-frequencies
-      const dynamicSpeed = rotationSpeed * (1 + normalizedAvg * 0.5);
-      polyhedron.rotation.x += dynamicSpeed;
-      polyhedron.rotation.y += dynamicSpeed;
-      
-      // 2. Modify orbit spheres based on different frequency bands
-      if (orbitSpheres.length > 0) {
-        const bandSize = Math.floor(dataArray.length / orbitSpheres.length);
-        
-        orbitSpheres.forEach((sphere, i) => {
-          // Get average of this frequency band
-          let bandSum = 0;
-          const startBand = i * bandSize;
-          const endBand = startBand + bandSize;
-          
-          for (let j = startBand; j < endBand && j < dataArray.length; j++) {
-            bandSum += dataArray[j];
-          }
-          
-          const bandAvg = bandSum / bandSize / 255; // Normalize to 0-1
-          
-          // Update sphere properties based on its frequency band
-          sphere.userData.angle += dynamicSpeed * (1 + bandAvg * 0.5);
-          
-          // Make orbit distance responsive to audio
-          const baseDistance = 2;
-          sphere.userData.distance = baseDistance * (1 + bandAvg * 0.8);
-          
-          // Update position with new angle and distance
+    function animateThree(){
+      requestAnimationFrame(animateThree);
+      if (!freezeMotion) {
+        polyhedron.rotation.x += rotationSpeed;
+        polyhedron.rotation.y += rotationSpeed;
+        orbitSpheres.forEach(sphere => {
+          sphere.userData.angle += rotationSpeed;
           sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
           sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
-          
-          // Update size and opacity
-          sphere.scale.set(
-            0.7 + bandAvg * 1.5,
-            0.7 + bandAvg * 1.5,
-            0.7 + bandAvg * 1.5
-          );
-          sphere.material.opacity = 0.4 + bandAvg * 0.6;
         });
-      }
-    }
-    
-    function animateThree() {
-      requestAnimationFrame(animateThree);
-      
-      if (!freezeMotion) {
-        // Basic animation when no audio is playing
-        if (!audioInitialized || audioPlayer.paused) {
-          polyhedron.rotation.x += rotationSpeed;
-          polyhedron.rotation.y += rotationSpeed;
-          
-          orbitSpheres.forEach(sphere => {
-            sphere.userData.angle += rotationSpeed;
-            sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
-            sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
-          });
-        } else {
-          // Audio-driven animation when audio is playing
-          updateAudioVisualization();
-        }
-        
         const t = Date.now() * 28.8354/1000000 * 1.3;
         const circleRadiusMotion = 1.5;
         mainGroup.position.x = Math.cos(t) * circleRadiusMotion - 1;
         mainGroup.position.y = -Math.sin(t) * circleRadiusMotion;
       }
-      
       renderer.render(scene, camera);
     }
-    
     initThree();
     animateThree();
     
@@ -659,11 +437,11 @@ Corné.</p>
       }
     }
     const particles = [];
-    function spawnParticles(x, y, color, count, speedMultiplier) {
-      for (let i = 0; i < count; i++) {
+    function spawnParticles(x, y, color) {
+      for (let i = 0; i < 5; i++) {
         const t = Date.now() * 0.0008;
         const angle = Math.cos(t) * Math.PI * 2 + Math.random() * 0.4;
-        const speed = (Math.random() * 5 + 100) * speedMultiplier;
+        const speed = Math.random() * 5 + 100;
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;
         const life = Math.random() * 1 + 0.2;
@@ -692,45 +470,13 @@ Corné.</p>
       const delta = (time - lastTime) / 1000;
       lastTime = time;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
       if (activeEmitter) {
         spawnAccumulator += delta;
-        
-        // If audio is playing, make particle emission react to audio
-        if (audioInitialized && !audioPlayer.paused && !freezeMotion) {
-          analyser.getByteFrequencyData(dataArray);
-          
-          // Calculate average frequency
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
-          }
-          const avgFreq = sum / dataArray.length;
-          
-          // More particles and faster with louder audio
-          const baseInterval = 0.1;
-          const speedMultiplier = 1 + (avgFreq / 255) * 1.5;
-          const particleCount = Math.max(3, Math.floor(avgFreq / 255 * 15));
-          
-          while (spawnAccumulator > baseInterval) {
-            spawnParticles(
-              activeEmitter.x, 
-              activeEmitter.y, 
-              activeEmitter.color, 
-              particleCount, 
-              speedMultiplier
-            );
-            spawnAccumulator -= baseInterval;
-          }
-        } else {
-          // Default particle behavior when no audio playing
-          while (spawnAccumulator > 0.1) {
-            spawnParticles(activeEmitter.x, activeEmitter.y, activeEmitter.color, 5, 1);
-            spawnAccumulator -= 0.1;
-          }
+        while (spawnAccumulator > 0.1) {
+          spawnParticles(activeEmitter.x, activeEmitter.y, activeEmitter.color);
+          spawnAccumulator -= 0.1;
         }
       }
-      
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.update(delta);
@@ -740,7 +486,6 @@ Corné.</p>
           p.draw(ctx);
         }
       }
-      
       requestAnimationFrame(animateParticles);
     }
     requestAnimationFrame(animateParticles);
@@ -816,18 +561,6 @@ Corné.</p>
       document.body.classList.add('default-style');
       lastSection = null;
       secondLastSection = null;
-      
-      // Reset polyhedron scale
-      if (polyhedron) {
-        polyhedron.scale.set(1, 1, 1);
-      }
-      
-      // Reset orbit spheres
-      orbitSpheres.forEach(sphere => {
-        sphere.userData.distance = 2;
-        sphere.scale.set(1, 1, 1);
-        sphere.material.opacity = 0.8;
-      });
     }
     
     const audioPlayer = document.getElementById('audio-player');
@@ -869,13 +602,6 @@ Corné.</p>
       });
     }
     
-    // Start the audio visualization
-    function startVisualization() {
-      if (!audioInitialized) {
-        drawAudioVisualization();
-      }
-    }
-    
     // Main audio click handler
     function handleAudioClick(section, type) {
       // If same active section clicked, toggle off
@@ -910,19 +636,7 @@ Corné.</p>
       if (secElem) { secElem.classList.add("active"); }
       
       audioPlayer.src = audioPath;
-      
-      // Initialize audio context on first user interaction
-      audioPlayer.play().then(() => {
-        if (!audioInitialized) {
-          initAudioContext();
-          startVisualization();
-        } else if (audioContext && audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
-      }).catch(e => {
-        console.error("Error starting audio:", e);
-      });
-      
+      audioPlayer.play();
       centerImage.src = imagePath;
       removeStyleClasses();
       document.body.classList.add("style-section-" + section);
@@ -962,32 +676,9 @@ Corné.</p>
       activeEmitter = null;
       freezeMotion = true;
       audioPlayer.src = "audio/audio00.mp3";
-      
-      // Initialize audio context if needed
-      audioPlayer.play().then(() => {
-        if (!audioInitialized) {
-          initAudioContext();
-          startVisualization();
-        } else if (audioContext && audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
-      }).catch(e => {
-        console.error("Error starting prologue audio:", e);
-      });
-      
+      audioPlayer.play();
       centerImage.src = "images/default-image.jpg";
       textContainer.innerHTML = "";
-      
-      fetch("text/audio00.txt")
-        .then(response => {
-          if (!response.ok) { throw new Error("Network response was not ok"); }
-          return response.text();
-        })
-        .then(data => { textContainer.textContent = data; })
-        .catch(error => {
-          textContainer.textContent = "Error loading prologue text.";
-          console.error("Error fetching prologue text:", error);
-        });
     }
     
     audioPlayer.addEventListener('ended', function () {
@@ -1002,11 +693,6 @@ Corné.</p>
       textContainer.innerHTML = "<p>Select a section to load the text.</p>";
       removeStyleClasses();
       document.body.classList.add('default-style');
-      
-      // Reset polyhedron scale
-      if (polyhedron) {
-        polyhedron.scale.set(1, 1, 1);
-      }
     });
     
     /* ===================================
@@ -1016,20 +702,6 @@ Corné.</p>
       const btn = document.getElementById("toggle-anim");
       freezeMotion = !freezeMotion;
       btn.textContent = freezeMotion ? "Anim On" : "Anim Off";
-      
-      // Reset visualizations when animations are off
-      if (freezeMotion) {
-        if (polyhedron) {
-          polyhedron.scale.set(1, 1, 1);
-        }
-        orbitSpheres.forEach(sphere => {
-          sphere.userData.distance = 2;
-          sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
-          sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
-          sphere.scale.set(1, 1, 1);
-          sphere.material.opacity = 0.8;
-        });
-      }
     }
     
     // Prevent right-click context menu on the audio element (extra precaution)
