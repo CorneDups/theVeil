@@ -50,13 +50,28 @@
        ====================== */
     #audio-visualization {
       position: fixed;
-      bottom: 0;
+      bottom: 100px;
       left: 0;
       width: 100%;
-      height: 80px;
-      z-index: 4;
+      height: 120px;
+      z-index: 40;
       pointer-events: none;
-      opacity: 0.8;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    #debug-info {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 10px;
+      font-size: 12px;
+      z-index: 1000;
+      max-width: 300px;
+      display: none;
     }
     
     /* ======================
@@ -172,6 +187,9 @@
 <body class="default-style">
   <!-- Toggle Animations Button -->
   <button id="toggle-anim" onclick="toggleAnimations()">Anim Off</button>
+  
+  <!-- Debug Info -->
+  <div id="debug-info"></div>
   
   <!-- Three.js Container for 3D Graphics -->
   <div id="three-container"></div>
@@ -329,23 +347,79 @@ Corné.</p>
     let audioContext, analyser, dataArray;
     let audioInitialized = false;
     
+    // Debug helper function
+    function updateDebugInfo(message) {
+      const debugElement = document.getElementById("debug-info");
+      if (debugElement) {
+        // Show the debug info
+        debugElement.style.display = "block";
+        
+        // Create timestamp
+        const now = new Date();
+        const timestamp = now.getHours() + ':' + 
+                         now.getMinutes().toString().padStart(2, '0') + ':' + 
+                         now.getSeconds().toString().padStart(2, '0') + '.' +
+                         now.getMilliseconds().toString().padStart(3, '0');
+        
+        // Add the message with timestamp
+        debugElement.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        
+        // Keep only the last 10 messages
+        const messages = debugElement.getElementsByTagName("div");
+        if (messages.length > 10) {
+          for (let i = 0; i < messages.length - 10; i++) {
+            debugElement.removeChild(messages[i]);
+          }
+        }
+        
+        // Auto-scroll to bottom
+        debugElement.scrollTop = debugElement.scrollHeight;
+      }
+    }
+    
     // Initialize the audio context and analyzer
     function initAudioContext() {
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256; // Power of 2, controls detail level
-        const bufferLength = analyser.frequencyBinCount;
-        dataArray = new Uint8Array(bufferLength);
+        // Create debug element if it doesn't exist
+        updateDebugInfo("Trying to initialize audio context...");
         
-        // Connect audio element to analyzer
-        const source = audioContext.createMediaElementSource(audioPlayer);
-        source.connect(analyser);
-        analyser.connect(audioContext.destination);
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          updateDebugInfo(`Audio context created, state: ${audioContext.state}`);
+        }
+        
+        // Resume context if suspended (needed for some browsers)
+        if (audioContext.state === 'suspended') {
+          audioContext.resume().then(() => {
+            updateDebugInfo(`Audio context resumed, state: ${audioContext.state}`);
+          }).catch(err => {
+            updateDebugInfo(`Failed to resume audio context: ${err.message}`);
+          });
+        }
+        
+        if (!analyser) {
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256; // Power of 2, controls detail level
+          analyser.smoothingTimeConstant = 0.8; // More smoothing for visualization
+          const bufferLength = analyser.frequencyBinCount;
+          dataArray = new Uint8Array(bufferLength);
+          updateDebugInfo(`Analyzer created, buffer length: ${bufferLength}`);
+          
+          // Connect audio element to analyzer
+          const source = audioContext.createMediaElementSource(audioPlayer);
+          source.connect(analyser);
+          analyser.connect(audioContext.destination);
+          updateDebugInfo("Audio pipeline connected");
+        }
         
         audioInitialized = true;
-        console.log("Audio context initialized successfully");
+        updateDebugInfo("✅ Audio context initialization successful");
+        
+        // Start the visualization explicitly
+        requestAnimationFrame(drawAudioVisualization);
+        
       } catch (error) {
+        updateDebugInfo(`❌ Failed to initialize audio context: ${error.message}`);
         console.error("Failed to initialize audio context:", error);
       }
     }
@@ -366,75 +440,168 @@ Corné.</p>
     
     // Draw frequency visualization bars
     function drawAudioVisualization() {
-      if (!audioInitialized || freezeMotion || audioPlayer.paused) {
-        // Clear canvas when not playing
-        visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
+      // Always clear the canvas first
+      visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
+      
+      // Draw canvas border to make it visible for debugging
+      visualCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+      visualCtx.strokeRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
+      
+      // Show visualization status
+      visualCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      visualCtx.font = "14px Arial";
+      
+      if (!audioInitialized) {
+        visualCtx.fillText("Audio visualization not initialized - play some audio to activate", 20, 30);
+        requestAnimationFrame(drawAudioVisualization);
         return;
       }
       
-      // Get frequency data
-      analyser.getByteFrequencyData(dataArray);
-      
-      visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
-      
-      // Style based on current section
-      let gradientColor1, gradientColor2;
-      if (currentActive && currentActive.section) {
-        switch(parseInt(currentActive.section)) {
-          case 1: gradientColor1 = '#333'; gradientColor2 = '#888'; break;
-          case 2: gradientColor1 = '#550000'; gradientColor2 = '#ff6600'; break;
-          case 3: gradientColor1 = '#000'; gradientColor2 = '#777'; break;
-          case 4: gradientColor1 = '#770000'; gradientColor2 = '#ff0000'; break;
-          case 5: gradientColor1 = '#330033'; gradientColor2 = '#990099'; break;
-          case 6: gradientColor1 = '#000080'; gradientColor2 = '#ffd700'; break;
-          case 7: gradientColor1 = '#000'; gradientColor2 = '#333'; break;
-          case 8: gradientColor1 = '#654321'; gradientColor2 = '#d2b48c'; break;
-          case 9: gradientColor1 = '#001f3f'; gradientColor2 = '#ffcc00'; break;
-          case 10: gradientColor1 = '#ffb6c1'; gradientColor2 = '#f0e68c'; break;
-          default: gradientColor1 = '#000080'; gradientColor2 = '#00ffff'; break;
-        }
-      } else {
-        gradientColor1 = '#000080';
-        gradientColor2 = '#00ffff';
+      if (freezeMotion) {
+        visualCtx.fillText("Animation paused - click 'Anim On' to resume", 20, 30);
+        requestAnimationFrame(drawAudioVisualization);
+        return;
       }
       
-      const gradient = visualCtx.createLinearGradient(0, 0, 0, visualizationCanvas.height);
-      gradient.addColorStop(0, gradientColor1);
-      gradient.addColorStop(1, gradientColor2);
-      
-      // Draw bars
-      const barWidth = visualizationCanvas.width / dataArray.length;
-      const centerY = visualizationCanvas.height / 2;
-      
-      for (let i = 0; i < dataArray.length; i++) {
-        const barHeight = dataArray[i] * (visualizationCanvas.height / 512);
-        
-        visualCtx.fillStyle = gradient;
-        visualCtx.fillRect(
-          i * barWidth, 
-          centerY - barHeight / 2, 
-          barWidth - 1, 
-          barHeight
-        );
+      if (audioPlayer.paused) {
+        visualCtx.fillText("Audio paused - play a section to see visualization", 20, 30);
+        requestAnimationFrame(drawAudioVisualization);
+        return;
       }
       
-      // Add a waveform outline
-      visualCtx.beginPath();
-      visualCtx.strokeStyle = "#ffffff";
-      visualCtx.lineWidth = 1;
-      
-      for (let i = 0; i < dataArray.length; i++) {
-        const x = i * barWidth;
-        const y = centerY - (dataArray[i] / 255) * (centerY - 10);
+      try {
+        // Get frequency data
+        analyser.getByteFrequencyData(dataArray);
         
-        if (i === 0) {
-          visualCtx.moveTo(x, y);
+        // Style based on current section
+        let gradientColor1, gradientColor2;
+        if (currentActive && currentActive.section) {
+          switch(parseInt(currentActive.section)) {
+            case 1: gradientColor1 = '#333'; gradientColor2 = '#888'; break;
+            case 2: gradientColor1 = '#550000'; gradientColor2 = '#ff6600'; break;
+            case 3: gradientColor1 = '#000'; gradientColor2 = '#777'; break;
+            case 4: gradientColor1 = '#770000'; gradientColor2 = '#ff0000'; break;
+            case 5: gradientColor1 = '#330033'; gradientColor2 = '#990099'; break;
+            case 6: gradientColor1 = '#000080'; gradientColor2 = '#ffd700'; break;
+            case 7: gradientColor1 = '#000'; gradientColor2 = '#333'; break;
+            case 8: gradientColor1 = '#654321'; gradientColor2 = '#d2b48c'; break;
+            case 9: gradientColor1 = '#001f3f'; gradientColor2 = '#ffcc00'; break;
+            case 10: gradientColor1 = '#ffb6c1'; gradientColor2 = '#f0e68c'; break;
+            default: gradientColor1 = '#000080'; gradientColor2 = '#00ffff'; break;
+          }
         } else {
-          visualCtx.lineTo(x, y);
+          gradientColor1 = '#000080';
+          gradientColor2 = '#00ffff';
         }
-      }
+        
+        const gradient = visualCtx.createLinearGradient(0, 0, 0, visualizationCanvas.height);
+        gradient.addColorStop(0, gradientColor1);
+        gradient.addColorStop(1, gradientColor2);
+        
+        // Draw visualization background
+        visualCtx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        visualCtx.fillRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
+        
+        // Draw bars with more pronounced effect
+        const barWidth = (visualizationCanvas.width / dataArray.length) * 2; // Wider bars
+        const centerY = visualizationCanvas.height / 2;
+        
+        // First, calculate the maximum value for scaling
+        let maxValue = 1; // Avoid division by zero
+        for (let i = 0; i < dataArray.length; i++) {
+          maxValue = Math.max(maxValue, dataArray[i]);
+        }
+        
+        // Scale factor to make visualization more pronounced
+        const scaleFactor = (maxValue < 50) ? 6 : (maxValue < 100) ? 4 : 2;
+        
+        for (let i = 0; i < dataArray.length; i++) {
+          // Skip every other bar to make them wider with spacing
+          if (i % 2 === 0) {
+            // Make bars taller for better visibility
+            const barHeight = Math.max(4, dataArray[i] * (visualizationCanvas.height / 255) * scaleFactor);
+            
+            // Add glow effect
+            const glow = visualCtx.createRadialGradient(
+              i * barWidth + barWidth/2, centerY, 0,
+              i * barWidth + barWidth/2, centerY, barHeight/1.5
+            );
+            glow.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+            glow.addColorStop(1, "rgba(255, 255, 255, 0)");
+            
+            // Draw glow first
+            visualCtx.fillStyle = glow;
+            visualCtx.beginPath();
+            visualCtx.arc(i * barWidth + barWidth/2, centerY, barHeight/1.5, 0, Math.PI * 2);
+            visualCtx.fill();
+            
+            // Draw bar
+            visualCtx.fillStyle = gradient;
+            visualCtx.fillRect(
+              i * barWidth, 
+              centerY - barHeight / 2,
+              barWidth - 4, // Gap between bars
+              barHeight
+            );
+            
+            // Draw border to make bars more distinct
+            visualCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            visualCtx.strokeRect(
+              i * barWidth, 
+              centerY - barHeight / 2,
+              barWidth - 4,
+              barHeight
+            );
+          }
+        }
+        
+        // Add a more prominent waveform outline
+        visualCtx.beginPath();
+        visualCtx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        visualCtx.lineWidth = 3;
+        
+        for (let i = 0; i < dataArray.length; i++) {
+          const x = i * (visualizationCanvas.width / dataArray.length);
+          const y = centerY - (dataArray[i] / 255) * (centerY - 20);
+          
+          if (i === 0) {
+            visualCtx.moveTo(x, y);
+          } else {
+            visualCtx.lineTo(x, y);
+          }
+        }
+        
+        visualCtx.stroke();
+        
+        // Add reflection
+        visualCtx.beginPath();
+        visualCtx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+        
+        for (let i = 0; i < dataArray.length; i++) {
+          const x = i * (visualizationCanvas.width / dataArray.length);
+          const y = centerY + (dataArray[i] / 255) * (centerY - 20);
+          
+          if (i === 0) {
+            visualCtx.moveTo(x, y);
+          } else {
+            visualCtx.lineTo(x, y);
+          }
+        }
+        
+        visualCtx.stroke();
+        
+        // Display audio status in visualization
+        visualCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        visualCtx.font = "12px Arial";
+        visualCtx.fillText(`Audio Visualization Active - ${audioPlayer.currentTime.toFixed(1)}s / ${audioPlayer.duration ? audioPlayer.duration.toFixed(1) : '?'}s`, 10, 20);
       
-      visualCtx.stroke();
+      } catch (error) {
+        // Handle errors in visualization
+        visualCtx.fillStyle = "rgba(255, 50, 50, 0.8)";
+        visualCtx.font = "14px Arial";
+        visualCtx.fillText(`Visualization error: ${error.message}`, 20, 50);
+        updateDebugInfo(`Visualization error: ${error.message}`);
+      }
       
       // Request next frame
       requestAnimationFrame(drawAudioVisualization);
@@ -807,6 +974,8 @@ Corné.</p>
     
     // Helper: reset active state completely (used when toggling off)
     function resetActiveState() {
+      updateDebugInfo("Resetting active state...");
+      
       clearCurrentActive();
       currentActive = null;
       activeEmitter = null;
@@ -828,7 +997,29 @@ Corné.</p>
         sphere.scale.set(1, 1, 1);
         sphere.material.opacity = 0.8;
       });
+      
+      // Keep visualization running but show idle state
+      startVisualization();
     }
+    
+    // Add a keyboard shortcut to toggle debug info display
+    window.addEventListener('keydown', function(e) {
+      // Press 'D' key to toggle debug info
+      if (e.key === 'd' || e.key === 'D') {
+        const debugElement = document.getElementById("debug-info");
+        if (debugElement) {
+          debugElement.style.display = debugElement.style.display === "none" ? "block" : "none";
+          updateDebugInfo("Debug display toggled");
+        }
+      }
+      
+      // Press 'V' key to force restart visualization
+      if (e.key === 'v' || e.key === 'V') {
+        window.visualizationRunning = false;
+        startVisualization();
+        updateDebugInfo("Visualization manually restarted");
+      }
+    });
     
     const audioPlayer = document.getElementById('audio-player');
     const centerImage = document.querySelector('#center-image img');
@@ -871,13 +1062,30 @@ Corné.</p>
     
     // Start the audio visualization
     function startVisualization() {
-      if (!audioInitialized) {
-        drawAudioVisualization();
+      updateDebugInfo("Starting visualization...");
+      
+      // Start the visualization regardless of initialization state
+      // This helps ensure it's always running
+      if (!window.visualizationRunning) {
+        window.visualizationRunning = true;
+        updateDebugInfo("Starting visualization animation loop");
+        requestAnimationFrame(drawAudioVisualization);
       }
+      
+      // Show visualization container explicitly
+      visualizationCanvas.style.display = "block";
     }
+    
+    // Make sure visualization starts when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      updateDebugInfo("Page loaded, starting initial visualization");
+      startVisualization();
+    });
     
     // Main audio click handler
     function handleAudioClick(section, type) {
+      updateDebugInfo(`handleAudioClick: section=${section}, type=${type}`);
+      
       // If same active section clicked, toggle off
       if (currentActive && currentActive.section === section && currentActive.type === type) {
         resetActiveState();
@@ -886,6 +1094,7 @@ Corné.</p>
       
       // Get media paths for current click
       const { audioPath, textPath, imagePath } = getMediaPaths(section, type);
+      updateDebugInfo(`Media paths: audio=${audioPath}, text=${textPath}`);
       
       // If special combination exists, trigger the golden shine animation
       if (type === 'song' && secondLastSection !== null && lastSection !== null) {
@@ -895,6 +1104,7 @@ Corné.</p>
         const combo = convSecondLast + convLast + convCurrent;
         if (specialCombinations[combo]) {
           triggerSpecialAnimation();
+          updateDebugInfo(`Special combination detected: ${combo}`);
         }
       }
       
@@ -909,19 +1119,47 @@ Corné.</p>
       const secElem = document.getElementById("section-" + section);
       if (secElem) { secElem.classList.add("active"); }
       
+      // Set audio source
       audioPlayer.src = audioPath;
       
-      // Initialize audio context on first user interaction
-      audioPlayer.play().then(() => {
-        if (!audioInitialized) {
-          initAudioContext();
-          startVisualization();
-        } else if (audioContext && audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
-      }).catch(e => {
-        console.error("Error starting audio:", e);
-      });
+      // Force visualization initialization before playing
+      if (!audioInitialized) {
+        updateDebugInfo("Initializing audio context directly before play...");
+        initAudioContext();
+        
+        // Start the visualization immediately
+        requestAnimationFrame(drawAudioVisualization);
+      }
+      
+      // Make sure the visualization is running
+      startVisualization();
+      
+      // Play the audio with more robust error handling
+      updateDebugInfo("Attempting to play audio...");
+      const playPromise = audioPlayer.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          updateDebugInfo("✅ Audio playback started successfully");
+          
+          // Make sure audio context is running
+          if (audioContext && audioContext.state === 'suspended') {
+            updateDebugInfo("Resuming suspended audio context...");
+            audioContext.resume().then(() => {
+              updateDebugInfo(`Audio context resumed: ${audioContext.state}`);
+            });
+          }
+        }).catch(error => {
+          updateDebugInfo(`❌ Audio playback error: ${error.message}`);
+          console.error("Error playing audio:", error);
+          
+          // Try to recover gracefully
+          if (error.name === 'NotAllowedError') {
+            updateDebugInfo("Browser blocked autoplay. Please try clicking again.");
+            alert("Audio playback was blocked by your browser. Please click again to play.");
+          }
+        });
+      }
       
       centerImage.src = imagePath;
       removeStyleClasses();
@@ -938,9 +1176,13 @@ Corné.</p>
           if (!response.ok) { throw new Error("Network response was not ok"); }
           return response.text();
         })
-        .then(data => { textContainer.textContent = data; })
+        .then(data => { 
+          textContainer.textContent = data;
+          updateDebugInfo("Text content loaded successfully");
+        })
         .catch(error => {
           textContainer.textContent = "Error loading text.";
+          updateDebugInfo(`Error fetching text: ${error.message}`);
           console.error("Error fetching text file:", error);
         });
     }
