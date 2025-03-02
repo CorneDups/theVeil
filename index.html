@@ -70,28 +70,52 @@
     /* ======================
        Special Animation Overlay Styles
        ====================== */
-    #special-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 50;
-      display: none; /* Hidden by default */
-      overflow: hidden;
-    }
+  #special-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 50;
+    display: none; /* Hidden by default */
+    overflow: hidden;
+  }
     /* The shine element that will animate diagonally */
     #special-overlay .shine {
-      position: absolute;
-      width: 200%;  /* Ensure it covers the diagonal distance */
-      height: 50px; /* A narrow stripe */
-      background: linear-gradient(90deg, transparent, rgba(255,215,0,0.8), transparent);
-      filter: blur(10px);
-      transform: rotate(45deg);
-      opacity: 0;
-    }
+    position: absolute;
+    width: 200%;  /* Ensure it covers the diagonal distance */
+    height: 200px; /* Much wider stripe - like a sheet */
+    background: linear-gradient(90deg, 
+      transparent,
+      rgba(255,0,0,0.5),
+      rgba(255,165,0,0.5),
+      rgba(255,255,0,0.5),
+      rgba(0,255,0,0.5),
+      rgba(0,0,255,0.5),
+      rgba(128,0,128,0.5),
+      transparent
+    );
+    filter: blur(20px);
+    transform-origin: center;
+    opacity: 0;
+  }
     
+    /* Sparkle elements */
+    #special-overlay .sparkle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: white;
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(1px);
+    transform: scale(0);
+    box-shadow: 
+      0 0 10px 2px rgba(255,255,255,0.8),
+      0 0 20px 5px rgba(255,215,0,0.6);
+  }
+
     /* ======================
        Keyframe Animations (unchanged)
        ====================== */
@@ -1267,32 +1291,135 @@ Corné.</p>
       return section === 10 ? "0" : section.toString();
     }
     
-    // Trigger the golden shine special animation using GSAP
-    function triggerSpecialAnimation() {
-      const overlay = document.getElementById("special-overlay");
-      overlay.style.display = "block";
-      const shine = document.createElement("div");
-      shine.className = "shine";
-      overlay.innerHTML = "";
-      overlay.appendChild(shine);
-      gsap.set(shine, { x: -window.innerWidth, y: window.innerHeight, opacity: 1 });
-      gsap.to(shine, {
-        duration: 25,
-        x: window.innerWidth,
-        y: -window.innerHeight,
-        ease: "power2.out",
+  // Enhanced shine animation that mimics a "shiny Pokémon" effect
+  function triggerSpecialAnimation() {
+    const overlay = document.getElementById("special-overlay");
+    overlay.style.display = "block";
+    overlay.innerHTML = ""; // Clear any previous elements
+    
+    // Create an initial flash effect
+    const flash = document.createElement("div");
+    flash.style.position = "absolute";
+    flash.style.width = "100%";
+    flash.style.height = "100%";
+    flash.style.backgroundColor = "white";
+    flash.style.opacity = "0";
+    overlay.appendChild(flash);
+    
+    // Flash sequence
+    gsap.to(flash, {
+      opacity: 0.7,
+      duration: 2.0,
+      yoyo: true,
+      repeat: 1,
+      onComplete: function() {
+        // Remove the flash element when done
+        overlay.removeChild(flash);
+      }
+    });
+    
+    // Create shine elements from each corner
+    const corners = [
+      { angle: 45, startX: -window.innerWidth, startY: window.innerHeight }, // bottom-left to top-right
+      { angle: -45, startX: window.innerWidth * 2, startY: window.innerHeight }, // bottom-right to top-left
+      { angle: 45, startX: window.innerWidth * 2, startY: -window.innerHeight/2 }, // top-right to bottom-left
+      { angle: -45, startX: -window.innerWidth, startY: -window.innerHeight/2 }  // top-left to bottom-right
+    ];
+    
+    // Create and animate each shine from different corners
+    corners.forEach((corner, index) => {
+      setTimeout(() => {
+        // Create shine element
+        const shine = document.createElement("div");
+        shine.className = "shine";
+        overlay.appendChild(shine);
+        
+        // Set initial position and rotation
+        gsap.set(shine, { 
+          x: corner.startX, 
+          y: corner.startY, 
+          opacity: 0.9,
+          rotation: corner.angle
+        });
+        
+        // Animate across the screen
+        gsap.to(shine, {
+          duration: 3.0, 
+          x: corner.startX > 0 ? -window.innerWidth : window.innerWidth * 2,
+          y: corner.startY > 0 ? -window.innerHeight/2 : window.innerHeight,
+          ease: "power2.inOut",
+          onComplete: function() {
+            // Remove this shine element when animation completes
+            overlay.removeChild(shine);
+          }
+        });
+      }, index * 150); // Stagger the animations
+    });
+    
+    // Create sparkle effects
+    const sparkleCount = 40; // Number of sparkles
+    for (let i = 0; i < sparkleCount; i++) {
+      setTimeout(() => {
+        createSparkle(overlay);
+      }, Math.random() * 1000); // Random delay for each sparkle
+    }
+    
+    // Set a timeout to hide the overlay after animations complete
+    setTimeout(() => {
+      gsap.to(overlay, {
+        opacity: 0,
+        duration: 1.5,
+        delay: 2.5, // Start fading after most animations are done
         onComplete: function() {
-          gsap.to(overlay, {
-            duration: 16,
-            opacity: 0,
-            onComplete: function() {
-              overlay.style.display = "none";
-              overlay.style.opacity = 0.8;
-            }
-          });
+          overlay.style.display = "none";
+          overlay.style.opacity = 1; // Reset opacity for next time
         }
       });
-    }
+    }, 0);
+  }
+  
+  // Helper function to create individual sparkles
+  function createSparkle(parent) {
+    const sparkle = document.createElement("div");
+    sparkle.className = "sparkle";
+    
+    // Random position
+    const x = Math.random() * window.innerWidth;
+    const y = Math.random() * window.innerHeight;
+    
+    // Random size (50% variation)
+    const size = 5 + Math.random() * 15;
+    
+    // Random color
+    const hue = Math.floor(Math.random() * 360);
+    const color = `hsl(${hue}, 100%, 70%)`;
+    
+    // Set properties
+    sparkle.style.left = `${x}px`;
+    sparkle.style.top = `${y}px`;
+    sparkle.style.width = `${size}px`;
+    sparkle.style.height = `${size}px`;
+    sparkle.style.backgroundColor = color;
+    
+    // Add to overlay
+    parent.appendChild(sparkle);
+    
+    // Animate
+    gsap.to(sparkle, {
+      keyframes: [
+        { opacity: 0, scale: 0, duration: 0 },
+        { opacity: 1, scale: 1.2, duration: 0.3 },
+        { opacity: 0.8, scale: 0.9, duration: 0.2 },
+        { opacity: 1, scale: 1.1, duration: 0.2 },
+        { opacity: 0.7, scale: 1, duration: 0.3 },
+        { opacity: 0, scale: 0, duration: 0.5 }
+      ],
+      ease: "power1.out",
+      onComplete: function() {
+        parent.removeChild(sparkle);
+      }
+    });
+  }
     
     /* ===================================
        Media Path Management
