@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio and Visual Interactive Webpage</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Times+New+Roman&display=swap" rel="stylesheet">
+  <!-- Three.js and GSAP from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+  <script src="polyhedron-textures.js"></script>
+  <style>
+    /* ======================
+       Toggle Button Style
+       ====================== */
+    #toggle-anim {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background */
+      border: 1px solid rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s, opacity 0.3s;
+    }
+    #toggle-anim:hover {
+      background-color: rgba(255, 255, 255, 0.9);
+    }
+    
+    /* ======================
+       Three.js & Particle Canvas Styles
+       ====================== */
+    #three-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -3;
+      pointer-events: none;
+    }
+    #particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -2;
+      pointer-events: none;
+    }
+    
+    /* ======================
+       Audio Visualization Styles
+       ====================== */
+    #audio-visualization {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1; /* Behind most elements but in front of body background */
+      pointer-events: none;
+      opacity: 0.4; /* More transparent */
+    }
+    
+    /* ======================
+       Special Animation Overlay Styles
+       ====================== */
+  #special-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 50;
+    display: none; /* Hidden by default */
+    overflow: hidden;
+  }
+    /* The shine element that will animate diagonally */
+    #special-overlay .shine {
+    position: absolute;
+    width: 200%;  /* Ensure it covers the diagonal distance */
+    height: 200px; /* Much wider stripe - like a sheet */
+    background: linear-gradient(90deg, 
+      transparent,
+      rgba(255,0,0,0.5),
+      rgba(255,165,0,0.5),
+      rgba(255,255,0,0.5),
+      rgba(0,255,0,0.5),
+      rgba(0,0,255,0.5),
+      rgba(128,0,128,0.5),
+      transparent
+    );
+    filter: blur(20px);
+    transform-origin: center;
+    opacity: 0;
+  }
+    
+    /* Sparkle elements */
+    #special-overlay .sparkle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: white;
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(1px);
+    transform: scale(0);
+    box-shadow: 
+      0 0 10px 2px rgba(255,255,255,0.8),
+      0 0 20px 5px rgba(255,215,0,0.6);
+  }
+
+    /* ======================
+       Keyframe Animations (unchanged)
+       ====================== */
+    @keyframes breeze { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    @keyframes shadowPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(0.4); } }
+    @keyframes fireFlicker { 0% { filter: brightness(1); } 25% { filter: brightness(1.3); } 50% { filter: brightness(0.8); } 75% { filter: brightness(1.3); } 100% { filter: brightness(1); } }
+    @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-4px, 4px); } 40% { transform: translate(4px, -4px); } 60% { transform: translate(-4px, -4px); } 80% { transform: translate(4px, 4px); } 100% { transform: translate(0); } }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    @keyframes fall { 0% { background-position: 0 -100px; } 100% { background-position: 0 100px; } }
+    @keyframes wander { 0% { background-position: 0 0; } 100% { background-position: 100% 0; } }
+    @keyframes dawn { 0% { background-position: 0 0; } 50% { background-position: 50% 50%; } 100% { background-position: 0 0; } }
+    @keyframes celestial { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes wildernessFade { 0%, 80% { opacity: 0; } 85% { opacity: 0.5; } 90% { opacity: 0.7; } 95% { opacity: 0.9; } 100% { opacity: 0; } }
+    
+    /* ======================
+       Prologue Styles
+       ====================== */
+    #prologue-container {
+      text-align: center;
+      margin-bottom: 20px;
+      font-family: 'Cinzel', serif;
+      color: rgba(0, 0, 0, 0.9); /* Slightly transparent text */
+      z-index: 3;
+      position: relative;
+      background-color: rgba(255, 255, 255, 0.6); /* Semi-transparent background */
+      padding: 10px 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(2px); /* Slight blur effect */
+      max-width: 80%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #prologue-container .prologue-title {
+      font-size: 24px;
+      margin-bottom: 10px;
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    }
+    #prologue-container .prologue-icon {
+      display: inline-block;
+      cursor: pointer;
+      opacity: 0.85; /* Slightly transparent */
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    #prologue-container .prologue-icon:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    #prologue-container .prologue-icon img {
+      width: 40px;
+      height: 40px;
+      background: transparent;
+      border-radius: 50%;
+    }
+    
+    /* ======================
+       Body and Section Styles (unchanged)
+       ====================== */
+    body.default-style { background-color: #f0f0f0; color: #000; }
+    body.style-section-1 { background: linear-gradient(135deg, #111, #444); background-size: 200% 200%; animation: breeze 15s ease-in-out infinite; font-family: 'Times New Roman', serif; }
+    body.style-section-2 { background: linear-gradient(135deg, #550000, #ff6600); background-size: 200% 200%; animation: flicker 1s infinite alternate; color: #fff; }
+    body.style-section-3 { background: #000; animation: shadowPulse 10s infinite alternate; color: #fff; }
+    body.style-section-4 { background: linear-gradient(135deg, #ff0000, #fff700, #ffd700); background-size: 200% 200%; animation: fireFlicker 4s infinite; color: #000; }
+    body.style-section-5 { background: linear-gradient(135deg, #000, #330033); animation: glitch 8s infinite; color: #fff; }
+    body.style-section-6 { background: linear-gradient(135deg, #000080, #ffd700); animation: pulse 12s infinite; color: #fff; }
+    body.style-section-7 { background: #333; background-size: 100% auto; animation: fall 20s linear infinite; color: #fff; }
+    body.style-section-8 { background: url('images/wilderness-bg.jpg'); background-size: cover; animation: wander 3s linear infinite; color: #fff; position: relative; }
+    body.style-section-8::after { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; pointer-events: none; opacity: 0; animation: wildernessFade 3.2s ease-in-out infinite; z-index: 1; }
+    body.style-section-9 { background: linear-gradient(135deg, #001f3f, #ffcc00); background-size: 200% 200%; animation: dawn 20s ease-in-out infinite; color: #fff; }
+    body.style-section-10 { background: #f0e68c; animation: celestial 33s ease-out forwards; color: #000; }
+    
+    /* ======================
+       General Layout & UI Elements (unchanged)
+       ====================== */
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; transition: background 0.5s, color 0.5s; position: relative; z-index: 2; }
+    #main-wrapper { display: flex; align-items: flex-start; justify-content: center; gap: 20px; flex-wrap: wrap; width: 100%; padding: 20px; box-sizing: border-box; position: relative; z-index: 3; }
+    .circle-container { position: relative; width: 500px; height: 500px; margin-bottom: 20px; }
+    .circle { position: absolute; width: 100%; height: 100%; border-radius: 50%; }
+    #center-image { 
+      position: absolute; 
+      top: 51%; /* Adjusted to be more centered vertically */
+      left: 50%; 
+      width: 200px; 
+      height: 200px; 
+      margin-top: -100px; 
+      margin-left: -100px; 
+      border-radius: 50%; 
+      overflow: hidden; 
+      border: 2px solid rgba(204, 204, 204, 0.7); 
+      background-color: rgba(255, 255, 255, 0.8); /* Slightly transparent */
+      z-index: 10;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      transition: opacity 0.3s;
+    }
+    #center-image img { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover;
+      opacity: 0.9; /* Slightly transparent image */
+    }
+    .section { 
+      position: absolute; 
+      top: 55%; 
+      left: 50%; 
+      width: 100px; 
+      height: 100px; 
+      margin: -50px; 
+      text-align: center; 
+      border: 2px solid rgba(255, 255, 255, 0.3); 
+      border-radius: 50%; 
+      transition: border-color 0.3s, background-color 0.3s; 
+      z-index: 5;
+      background-color: rgba(255, 255, 255, 0.1); /* Slightly visible background */
+      backdrop-filter: blur(1px); /* Very slight blur for depth */
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+    }
+    .section.active { 
+      border-color: rgba(0, 0, 139, 0.8); 
+      background-color: rgba(255, 255, 0, 0.3); 
+    }
+    .section .section-text { 
+      margin-bottom: 5px;
+      text-shadow: 0 0 3px rgba(255, 255, 255, 0.5); /* Text shadow for readability */
+    }
+    .section .episode-name { 
+      font-size: 12px; 
+      font-weight: bold;
+      color: rgba(0, 0, 0, 0.9); /* Slightly transparent text */
+    }
+    .section .song-name { 
+      font-size: 10px;
+      color: rgba(0, 0, 0, 0.8); /* Slightly transparent text */
+    }
+    .section .icons { 
+      display: flex; 
+      justify-content: center; 
+      gap: 5px;
+    }
+    .section .icons img { 
+      width: 24px; 
+      height: 24px; 
+      cursor: pointer; 
+      background: transparent;
+      opacity: 0.85; /* Slightly transparent icons */
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .section .icons img:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    #text-container { 
+      width: 300px; 
+      max-height: 500px; 
+      overflow-y: auto; 
+      padding: 10px; 
+      background: rgba(255, 255, 255, 0.85); /* More transparent background */
+      border: 1px solid rgba(204, 204, 204, 0.5); 
+      border-radius: 5px; 
+      font-size: 14px; 
+      line-height: 1.5; 
+      color: rgba(0, 0, 0, 0.9); /* Slightly transparent text */
+      position: relative; 
+      z-index: 4; 
+      white-space: pre-wrap;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(2px); /* Slight blur effect for modern browsers */
+      transition: background 0.3s, opacity 0.3s;
+    }
+    #audio-player { 
+      margin-top: 20px; 
+      position: relative; 
+      z-index: 3;
+      opacity: 0.85; /* Slightly transparent */
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      background-color: rgba(255, 255, 255, 0.3); /* Semi-transparent background */
+      transition: opacity 0.3s;
+    }
+    #audio-player:hover {
+      opacity: 1;
+    }
+    @media (max-width: 600px) {
+      .circle-container { width: 300px; height: 300px; }
+      #center-image { width: 120px; height: 120px; margin-top: -60px; margin-left: -60px; }
+      .section { width: 60px; height: 60px; margin: -30px; }
+      .section .episode-name { font-size: 10px; }
+      .section .song-name { font-size: 8px; }
+      .section .icons img { width: 16px; height: 16px; }
+      #text-container { width: 250px; }
+    }
+  </style>
+</head>
+<body class="default-style">
+  <!-- Toggle Animations Button -->
+  <button id="toggle-anim" onclick="toggleAnimations()">Anim Off</button>
+  
+  <!-- Three.js Container for 3D Graphics -->
+  <div id="three-container"></div>
+  <!-- Particle Canvas -->
+  <canvas id="particle-canvas"></canvas>
+  <!-- Audio Visualization Canvas -->
+  <canvas id="audio-visualization"></canvas>
+  
+  <!-- Prologue Container -->
+  <div id="prologue-container">
+    <p class="prologue-title">Prologue - Piercing the Veil</p>
+    <div class="prologue-icon" onclick="handlePrologue()">
+      <img src="images/audio-note.jpg" alt="Prologue Audiobook">
+    </div>
+  </div>
+  
+  <!-- Main Interactive Area -->
+  <div id="main-wrapper">
+    <div class="circle-container">
+      <div class="circle" id="circle">
+        <!-- Section 1 (Unknown) -->
+        <div class="section" id="section-1" style="transform: rotate(-72deg) translate(200px) rotate(72deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 1-2</div>
+            <div class="song-name">Unknown</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(1, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(1, 'song')">
+          </div>
+        </div>
+        <!-- Section 2 (Ashes) -->
+        <div class="section" id="section-2" style="transform: rotate(-36deg) translate(200px) rotate(36deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 3-4</div>
+            <div class="song-name">Ashes</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(2, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(2, 'song')">
+          </div>
+        </div>
+        <!-- Section 3 (Shadow) -->
+        <div class="section" id="section-3" style="transform: rotate(0deg) translate(200px) rotate(0deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 5</div>
+            <div class="song-name">Shadow</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(3, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(3, 'song')">
+          </div>
+        </div>
+        <!-- Section 4 (Fire & Blood) -->
+        <div class="section" id="section-4" style="transform: rotate(36deg) translate(200px) rotate(-36deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 6</div>
+            <div class="song-name">Fire & Blood</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(4, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(4, 'song')">
+          </div>
+        </div>
+        <!-- Section 5 (Void) -->
+        <div class="section" id="section-5" style="transform: rotate(72deg) translate(200px) rotate(-72deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 7</div>
+            <div class="song-name">Void</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(5, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(5, 'song')">
+          </div>
+        </div>
+        <!-- Section 6 (Lion Roar) -->
+        <div class="section" id="section-6" style="transform: rotate(108deg) translate(200px) rotate(-108deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 8-10</div>
+            <div class="song-name">Lion Roar</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(6, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(6, 'song')">
+          </div>
+        </div>
+        <!-- Section 7 (Abyss) -->
+        <div class="section" id="section-7" style="transform: rotate(144deg) translate(200px) rotate(-144deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 9-10</div>
+            <div class="song-name">Abyss</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(7, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(7, 'song')">
+          </div>
+        </div>
+        <!-- Section 8 (Wilderness) -->
+        <div class="section" id="section-8" style="transform: rotate(180deg) translate(200px) rotate(-180deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 11-12</div>
+            <div class="song-name">Wilderness</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(8, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(8, 'song')">
+          </div>
+        </div>
+        <!-- Section 9 (Dawn) -->
+        <div class="section" id="section-9" style="transform: rotate(216deg) translate(200px) rotate(-216deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 13</div>
+            <div class="song-name">Dawn</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(9, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(9, 'song')">
+          </div>
+        </div>
+        <!-- Section 10 (In Your Arms) - now uses "0" -->
+        <div class="section" id="section-10" style="transform: rotate(252deg) translate(200px) rotate(-252deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 14</div>
+            <div class="song-name">In Your arms</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(10, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(10, 'song')">
+          </div>
+        </div>
+      </div>
+      <div id="center-image">
+        <img src="images/default-image.jpg" alt="Default Center">
+      </div>
+    </div>
+    <div id="text-container">
+      <p>Welcome, Thank you for visiting! To start, click on any of the note or audiobook symbols. Best place to start is with the prologue (above) and then Part 1-2. In each section there is an audio book and a song which roughly connects to that part of the journey. All the words to every audio piece will be displayed here (for audio+visual listeners like myself). May you enjoy this deeply personal journey of mine and maybe find something meaningful for yourself, by Grace. If you don't find it meaningful, that's also okay. I appreciate you giving it a chance.
+With gratitude, 
+Corné.</p>
+    </div>
+  </div>
+  <!-- Updated audio element with controlsList and disabled right-click -->
+  <audio id="audio-player" controls controlsList="nodownload" oncontextmenu="return false;">Your browser does not support the audio element.</audio>
+  
+  <!-- Special overlay for golden shine animation -->
+  <div id="special-overlay"></div>
+  
+  <!-- ======================
+       Three.js Initialization & Enhanced Animation
+       ====================== -->
+  <script>
+    /* ===================================
+       Global Variables
+    =================================== */
+    // Declare global variables at the top of the script
+    let audioContext, analyser, dataArray;
+    let audioInitialized = false;
+    let currentActive = null;
+    let lastSection = null, secondLastSection = null;
+    let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
+    let rotationSpeed = 0.005; // Base rotation speed
+    const orbitFactorMap = {1: 1.0, 2: 1.2, 3: 0.8, 4: 1.5, 5: 1.3, 6: 1.1, 7: 1.6, 8: 1.0, 9: 0.9, 10: 1.0};
+    let freezeMotion = false;
+    let activeEmitter = null;
+    let spawnAccumulator = 0;
+    let lastTime = performance.now();
+    let particles = [];
+    let currentVisualizationStyle = 1;
+    let visualizationRunning = false;
+    
+    // DOM elements
+    const audioPlayer = document.getElementById('audio-player');
+    const centerImage = document.querySelector('#center-image img');
+    const textContainer = document.getElementById('text-container');
+    const visualizationCanvas = document.getElementById("audio-visualization");
+    const visualCtx = visualizationCanvas.getContext("2d");
+    const canvas = document.getElementById("particle-canvas");
+    const ctx = canvas.getContext("2d");
+    
+    /* ===================================
+       Audio Context & Analyzer Setup
+    =================================== */
+    
+    // Simplified logging function (only logs to console now)
+    function updateDebugInfo(message) {
+      console.log(`[Audio Visualization] ${message}`);
+    }
+    
+    // Initialize the audio context and analyzer
+    function initAudioContext() {
+      try {
+        // Create debug element if it doesn't exist
+        updateDebugInfo("Trying to initialize audio context...");
+        
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          updateDebugInfo(`Audio context created, state: ${audioContext.state}`);
+        }
+        
+        // Resume context if suspended (needed for some browsers)
+        if (audioContext.state === 'suspended') {
+          audioContext.resume().then(() => {
+            updateDebugInfo(`Audio context resumed, state: ${audioContext.state}`);
+          }).catch(err => {
+            updateDebugInfo(`Failed to resume audio context: ${err.message}`);
+          });
+        }
+        
+        if (!analyser) {
+          analyser = audioContext.createAnalyser();
+          // Increase FFT size for better frequency resolution
+          analyser.fftSize = 1024; // Power of 2: 32, 64, 128, 256, 512, 1024, 2048, etc.
+          analyser.smoothingTimeConstant = 0.85; // Slightly more smoothing for better visuals
+          analyser.minDecibels = -90; // Standard value
+          analyser.maxDecibels = -10; // Standard value
+          
+          const bufferLength = analyser.frequencyBinCount;
+          dataArray = new Uint8Array(bufferLength);
+          updateDebugInfo(`Analyzer created, buffer length: ${bufferLength}`);
+          
+          // Connect audio element to analyzer
+          const source = audioContext.createMediaElementSource(audioPlayer);
+          source.connect(analyser);
+          analyser.connect(audioContext.destination);
+          updateDebugInfo("Audio pipeline connected");
+        }
+        
+        audioInitialized = true;
+        updateDebugInfo("✅ Audio context initialization successful");
+        
+        // Start the visualization explicitly
+        startVisualization();
+        
+      } catch (error) {
+        updateDebugInfo(`❌ Failed to initialize audio context: ${error.message}`);
+        console.error("Failed to initialize audio context:", error);
+      }
+    }
+    
+    /* ===================================
+       Audio Visualization Canvas Setup
+    =================================== */
+    
+    function resizeVisualizationCanvas() {
+      visualizationCanvas.width = window.innerWidth;
+      visualizationCanvas.height = window.innerHeight;
+    }
+    
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    // Initialize canvas sizes
+    resizeVisualizationCanvas();
+    resizeCanvas();
+    
+    // Add resize listeners
+    window.addEventListener("resize", () => {
+      resizeVisualizationCanvas();
+      resizeCanvas();
+    });
+    
+    // Helper function to check if we should show audio visualizations
+    function shouldShowVisualization() {
+      // Add defensive check for currentActive - handle the case when it's not initialized yet
+      if (!currentActive) {
+        return false;
+      }
+      
+      // Special handling for problem sections 1, 3, and 7
+      if (currentActive.section && [1, 3, 7].includes(parseInt(currentActive.section)) && 
+          currentActive.type === 'song' && !audioPlayer.paused) {
+        return true;
+      }
+      
+      // Only show visualizations for songs, not for audiobooks
+      return !freezeMotion && audioInitialized && !audioPlayer.paused && 
+             currentActive.type === 'song';
+    }
+    
+    // Start the audio visualization
+    function startVisualization() {
+      updateDebugInfo("Starting visualization...");
+      
+      // Start the visualization regardless of initialization state
+      if (!visualizationRunning) {
+        visualizationRunning = true;
+        updateDebugInfo("Starting visualization animation loop");
+        requestAnimationFrame(drawAudioVisualization);
+      }
+      
+      // Show visualization container
+      visualizationCanvas.style.display = "block";
+    }
+    
+    /* ===================================
+       Frequency Analysis Functions
+    =================================== */
+    
+    // Helper function for frequency band grouping
+    function groupFrequencies(dataArray) {
+      // Define band frequency ranges (approximate based on standard FFT size)
+      // These values can be adjusted based on the actual audio content
+      const bands = {
+        bass: { start: 0, end: Math.floor(dataArray.length * 0.1) }, // First 10% - low frequencies
+        lowMid: { start: Math.floor(dataArray.length * 0.1), end: Math.floor(dataArray.length * 0.3) }, // 10-30% - low-mid
+        highMid: { start: Math.floor(dataArray.length * 0.3), end: Math.floor(dataArray.length * 0.6) }, // 30-60% - high-mid
+        treble: { start: Math.floor(dataArray.length * 0.6), end: dataArray.length } // 60-100% - high frequencies
+      };
+      
+      // Calculate average energy in each band
+      const result = {};
+      
+      for (const [bandName, range] of Object.entries(bands)) {
+        let sum = 0;
+        for (let i = range.start; i < range.end; i++) {
+          sum += dataArray[i];
+        }
+        const avgValue = sum / (range.end - range.start);
+        result[bandName] = avgValue / 255; // Normalize to 0-1
+      }
+      
+      // Get individual frequency values for each band (used for detailed visualization)
+      result.bassValues = dataArray.slice(bands.bass.start, bands.bass.end);
+      result.lowMidValues = dataArray.slice(bands.lowMid.start, bands.lowMid.end);
+      result.highMidValues = dataArray.slice(bands.highMid.start, bands.highMid.end);
+      result.trebleValues = dataArray.slice(bands.treble.start, bands.treble.end);
+      
+      return result;
+    }
+    
+    // Create a smarter shuffled array of indices for better frequency distribution
+    function createShuffledIndices(count) {
+      const indices = [];
+      
+      // Method 1: Interleave frequencies from different regions
+      for (let i = 0; i < count; i++) {
+        // This formula creates an interleaved pattern that spreads frequencies more evenly
+        let index;
+        if (i % 3 === 0) {
+          // Every third position gets a low frequency
+          index = Math.floor(i / 3);
+        } else if (i % 3 === 1) {
+          // Every third+1 position gets a high frequency
+          index = count - 1 - Math.floor(i / 3);
+        } else {
+          // Every third+2 position gets a mid frequency
+          index = Math.floor(count / 2) + Math.floor(i / 6) - Math.floor(i / 3);
+        }
+        
+        // Make sure the index is within bounds
+        index = Math.max(0, Math.min(count - 1, index));
+        indices.push(index);
+      }
+      
+      return indices;
+    }
+    
+    /* ===================================
+       Audio Visualization Drawing
+    =================================== */
+    
+    function safeColorParse(hexColor, position) {
+  // Default fallback values if parsing fails
+  const defaults = { 1: 0, 3: 0, 5: 0 };
+  
+  try {
+    // Extract 2 characters at the position and convert to integer
+    const value = parseInt(hexColor.substr(position, 2), 16);
+    // Check if the result is a valid number
+    return isNaN(value) ? defaults[position] : value;
+  } catch (e) {
+    // Return safe default if any error occurs
+    return defaults[position];
+  }
+}
+
+    // Draw frequency visualization bars
+    function drawAudioVisualization() {
+      // Always clear the canvas first
+      visualCtx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
+      
+      // Check if we should show visualization (only for songs, not audiobooks)
+      if (!shouldShowVisualization()) {
+        requestAnimationFrame(drawAudioVisualization);
+        return;
+      }
+      
+      try {
+        // Get frequency data
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Group frequencies into bands
+        const frequencyBands = groupFrequencies(dataArray);
+        
+        // Get visualization colors based on current section
+        const colors = getSectionColors(currentActive ? currentActive.section : null);
+        
+        // IMPROVED VISUALIZATION: Multi-layer frequency band visualization
+        const centerX = visualizationCanvas.width / 2;
+        const centerY = visualizationCanvas.height / 2;
+        const maxRadius = Math.min(visualizationCanvas.width, visualizationCanvas.height) * 0.7;
+        
+        // Calculate overall intensity for animation effects
+        const intensity = (frequencyBands.bass * 1.5 + 
+                          frequencyBands.lowMid * 1.2 + 
+                          frequencyBands.highMid + 
+                          frequencyBands.treble * 0.8) / 4;
+        
+        // Create shuffled indices for better distribution
+        const barCount = 64;  // Number of bars to display
+        const angleStep = (Math.PI * 2) / barCount;
+        const shuffledIndices = createShuffledIndices(barCount);
+        
+        // Draw background glow based on overall intensity
+        const bgGlow = visualCtx.createRadialGradient(
+          centerX, centerY, 0,
+          centerX, centerY, maxRadius * 1.2
+        );
+        //bgGlow.addColorStop(0, `rgba(${parseInt(colors.color3.substr(1, 2), 16)}, ${parseInt(colors.color3.substr(3, 2), 16)}, ${parseInt(colors.color3.substr(5, 2), 16)}, ${0.1 + intensity * 0.2})`);
+        bgGlow.addColorStop(0, `rgba(${safeColorParse(colors.color3, 1)}, ${safeColorParse(colors.color3, 3)}, ${safeColorParse(colors.color3, 5)}, ${0.1 + intensity * 0.2})`);
+
+
+        //bgGlow.addColorStop(0.7, `rgba(${parseInt(colors.color3.substr(1, 2), 16)}, ${parseInt(colors.color3.substr(3, 2), 16)}, ${parseInt(colors.color3.substr(5, 2), 16)}, ${0.05 + intensity * 0.1})`);
+        bgGlow.addColorStop(0.7, `rgba(${safeColorParse(colors.color3, 1)}, ${safeColorParse(colors.color3, 3)}, ${safeColorParse(colors.color3, 5)}, ${0.05 + intensity * 0.1})`);
+
+        bgGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+        
+        visualCtx.fillStyle = bgGlow;
+        visualCtx.beginPath();
+        visualCtx.arc(centerX, centerY, maxRadius * 1.2, 0, Math.PI * 2);
+        visualCtx.fill();
+        
+        // ---------------------------------
+        // LAYER 1: Inner Bass Visualization
+        // ---------------------------------
+        const bassRadius = maxRadius * 0.3;
+        
+        // First, draw a subtle bass pulse circle
+        visualCtx.beginPath();
+        visualCtx.arc(centerX, centerY, bassRadius * (0.8 + frequencyBands.bass * 0.5), 0, Math.PI * 2);
+        //visualCtx.fillStyle = `rgba(${parseInt(colors.color1.substr(1, 2), 16)}, ${parseInt(colors.color1.substr(3, 2), 16)}, ${parseInt(colors.color1.substr(5, 2), 16)}, ${0.1 + frequencyBands.bass * 0.3})`;
+        visualCtx.fillStyle = `rgba(${safeColorParse(colors.color1, 1)}, ${safeColorParse(colors.color1, 3)}, ${safeColorParse(colors.color1, 5)}, ${0.1 + frequencyBands.bass * 0.3})`;
+
+        visualCtx.fill();
+        
+        // Bass frequency bars (innermost ring)
+        for (let i = 0; i < barCount; i++) {
+          // Use shuffled index to get better distribution
+          const bassIndex = Math.floor(shuffledIndices[i] * frequencyBands.bassValues.length / barCount);
+          const value = frequencyBands.bassValues[bassIndex] / 255;
+          
+          const angle = i * angleStep;
+          const barHeight = (0.3 + value * 0.7) * bassRadius; // Minimum size + dynamic part
+          
+          // Create gradient for the bars
+          const gradient = visualCtx.createLinearGradient(
+            centerX, centerY,
+            centerX + Math.cos(angle) * barHeight,
+            centerY + Math.sin(angle) * barHeight
+          );
+          //gradient.addColorStop(0, `rgba(${parseInt(colors.color1.substr(1, 2), 16)}, ${parseInt(colors.color1.substr(3, 2), 16)}, ${parseInt(colors.color1.substr(5, 2), 16)}, 0.8)`);
+          //gradient.addColorStop(1, `rgba(${parseInt(colors.color2.substr(1, 2), 16)}, ${parseInt(colors.color2.substr(3, 2), 16)}, ${parseInt(colors.color2.substr(5, 2), 16)}, 0.2)`);
+          gradient.addColorStop(0, `rgba(${safeColorParse(colors.color1, 1)}, ${safeColorParse(colors.color1, 3)}, ${safeColorParse(colors.color1, 5)}, 0.8)`);
+          gradient.addColorStop(1, `rgba(${safeColorParse(colors.color2, 1)}, ${safeColorParse(colors.color2, 3)}, ${safeColorParse(colors.color2, 5)}, 0.2)`);
+
+          
+          visualCtx.beginPath();
+          visualCtx.moveTo(centerX, centerY);
+          
+          // Draw a wider arc for each bar
+          const arcWidth = angleStep * 0.85;
+          
+          visualCtx.arc(
+            centerX, centerY,
+            barHeight,
+            angle - arcWidth/2,
+            angle + arcWidth/2
+          );
+          
+          visualCtx.lineTo(centerX, centerY);
+          visualCtx.fillStyle = gradient;
+          visualCtx.fill();
+        }
+        
+        // ---------------------------------
+        // LAYER 2: Mid Frequency Visualization
+        // ---------------------------------
+        const midRadius = maxRadius * 0.6;
+        
+        // Mid frequency bars (middle ring)
+        for (let i = 0; i < barCount; i++) {
+          // Combine low and high mids for variety
+          const midIndex = i % 2 === 0 ? 
+            Math.floor(shuffledIndices[i] * frequencyBands.lowMidValues.length / barCount) :
+            Math.floor(shuffledIndices[i] * frequencyBands.highMidValues.length / barCount);
+          
+          const values = i % 2 === 0 ? frequencyBands.lowMidValues : frequencyBands.highMidValues;
+          let value = values[midIndex] / 255;
+          
+          // Enhance mid frequencies slightly for better visualization
+          value = Math.pow(value, 0.8); // Enhance quieter sounds
+          
+          const angle = i * angleStep + (Math.PI / barCount); // Offset angle for this layer
+          const barStart = bassRadius * 1.1; // Start outside the bass layer
+          const barLength = value * (midRadius - barStart);
+          
+          // Create gradient
+          const gradient = visualCtx.createLinearGradient(
+            centerX + Math.cos(angle) * barStart,
+            centerY + Math.sin(angle) * barStart,
+            centerX + Math.cos(angle) * (barStart + barLength),
+            centerY + Math.sin(angle) * (barStart + barLength)
+          );
+          //gradient.addColorStop(0, `rgba(${parseInt(colors.color2.substr(1, 2), 16)}, ${parseInt(colors.color2.substr(3, 2), 16)}, ${parseInt(colors.color2.substr(5, 2), 16)}, 0.1)`);
+          //gradient.addColorStop(1, `rgba(${parseInt(colors.color2.substr(1, 2), 16)}, ${parseInt(colors.color2.substr(3, 2), 16)}, ${parseInt(colors.color2.substr(5, 2), 16)}, 0.7)`);
+          gradient.addColorStop(0, `rgba(${safeColorParse(colors.color2, 1)}, ${safeColorParse(colors.color2, 3)}, ${safeColorParse(colors.color2, 5)}, 0.1)`);
+          gradient.addColorStop(1, `rgba(${safeColorParse(colors.color2, 1)}, ${safeColorParse(colors.color2, 3)}, ${safeColorParse(colors.color2, 5)}, 0.7)`);
+
+          
+          const barEnd = barStart + barLength;
+          const arcWidth = angleStep * 0.8;
+          
+          visualCtx.beginPath();
+          visualCtx.arc(centerX, centerY, barStart, angle - arcWidth/2, angle + arcWidth/2);
+          visualCtx.arc(centerX, centerY, barEnd, angle + arcWidth/2, angle - arcWidth/2, true);
+          visualCtx.closePath();
+          
+          visualCtx.fillStyle = gradient;
+          visualCtx.fill();
+        }
+        
+        // ---------------------------------
+        // LAYER 3: High Frequency Visualization
+        // ---------------------------------
+        const highRadius = maxRadius;
+        
+        // High frequency bars (outer ring)
+        for (let i = 0; i < barCount; i++) {
+          // Use shuffled index for treble frequencies
+          const trebleIndex = Math.floor(shuffledIndices[i] * frequencyBands.trebleValues.length / barCount);
+          const value = frequencyBands.trebleValues[trebleIndex] / 255;
+          
+          // Enhance high frequencies more aggressively
+          const enhancedValue = Math.pow(value, 0.7);
+          
+          const angle = i * angleStep; // Back to original angle
+          const barStart = midRadius * 1.05; // Start outside the mid layer
+          const barLength = enhancedValue * (highRadius - barStart);
+          
+          // Create gradient
+          const gradient = visualCtx.createLinearGradient(
+            centerX + Math.cos(angle) * barStart,
+            centerY + Math.sin(angle) * barStart,
+            centerX + Math.cos(angle) * (barStart + barLength),
+            centerY + Math.sin(angle) * (barStart + barLength)
+          );
+          //gradient.addColorStop(0, `rgba(${parseInt(colors.color3.substr(1, 2), 16)}, ${parseInt(colors.color3.substr(3, 2), 16)}, ${parseInt(colors.color3.substr(5, 2), 16)}, 0.2)`);
+          gradient.addColorStop(0, `rgba(${safeColorParse(colors.color3, 1)}, ${safeColorParse(colors.color3, 3)}, ${safeColorParse(colors.color3, 5)}, 0.2)`);
+          gradient.addColorStop(1, `rgba(255, 255, 255, 0.8)`);
+          
+          const barEnd = barStart + barLength;
+          const arcWidth = angleStep * 0.7;
+          
+          visualCtx.beginPath();
+          visualCtx.arc(centerX, centerY, barStart, angle - arcWidth/2, angle + arcWidth/2);
+          visualCtx.arc(centerX, centerY, barEnd, angle + arcWidth/2, angle - arcWidth/2, true);
+          visualCtx.closePath();
+          
+          visualCtx.fillStyle = gradient;
+          visualCtx.fill();
+          
+          // Add glow for prominent high frequencies
+          if (enhancedValue > 0.7) {
+            const glow = visualCtx.createRadialGradient(
+              centerX + Math.cos(angle) * barEnd,
+              centerY + Math.sin(angle) * barEnd,
+              0,
+              centerX + Math.cos(angle) * barEnd,
+              centerY + Math.sin(angle) * barEnd,
+              10 + enhancedValue * 15
+            );
+            glow.addColorStop(0, `rgba(255, 255, 255, ${enhancedValue})`);
+            glow.addColorStop(1, "rgba(255, 255, 255, 0)");
+            
+            visualCtx.fillStyle = glow;
+            visualCtx.beginPath();
+            visualCtx.arc(
+              centerX + Math.cos(angle) * barEnd,
+              centerY + Math.sin(angle) * barEnd,
+              10 + enhancedValue * 15,
+              0, Math.PI * 2
+            );
+            visualCtx.fill();
+          }
+        }
+        
+        // Add overall waveform outline that connects all frequencies
+        visualCtx.beginPath();
+        visualCtx.strokeStyle = `rgba(255, 255, 255, ${0.3 + intensity * 0.5})`;
+        visualCtx.lineWidth = 2;
+        
+        // Create a smoother, more balanced waveform using the shuffled indices
+        for (let i = 0; i < barCount; i++) {
+          const index = shuffledIndices[i];
+          const normalizedIndex = index / barCount;
+          const dataIndex = Math.floor(normalizedIndex * dataArray.length);
+          const value = dataArray[dataIndex] / 255;
+          
+          const angle = i * angleStep;
+          // Use a combination of bass, mid and high frequencies for a balanced waveform
+          const radius = bassRadius + (value * (highRadius - bassRadius));
+          
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          
+          if (i === 0) {
+            visualCtx.moveTo(x, y);
+          } else {
+            visualCtx.lineTo(x, y);
+          }
+        }
+        
+        visualCtx.closePath();
+        visualCtx.stroke();
+      } catch (error) {
+        console.error("Visualization error:", error);
+      }
+      
+      // Request next frame
+      requestAnimationFrame(drawAudioVisualization);
+    }
+    
+    /* ===================================
+       Color Management
+    =================================== */
+    
+    // Helper function to get section colors
+    function getSectionColors(section) {
+  const colors = {
+    1: { 
+      color1: '#333333', 
+      color2: '#888888', 
+      color3: '#666666' 
+    },
+    2: { 
+      color1: '#550000', 
+      color2: '#ff6600', 
+      color3: '#aa3300' 
+    },
+    3: { 
+      color1: '#000000', 
+      color2: '#777777',
+      color3: '#444444' 
+    },
+    4: { 
+      color1: '#770000', 
+      color2: '#ff0000',
+      color3: '#aa0000' 
+    },
+    5: { 
+      color1: '#330033', 
+      color2: '#990099',
+      color3: '#660066' 
+    },
+    6: { 
+      color1: '#000080', 
+      color2: '#ffd700',
+      color3: '#8b4513' 
+    },
+    7: { 
+      color1: '#000000', 
+      color2: '#333333',
+      color3: '#666666' 
+    },
+    8: { 
+      color1: '#654321', 
+      color2: '#d2b48c',
+      color3: '#8b4513' 
+    },
+    9: { 
+      color1: '#001f3f', 
+      color2: '#ffcc00',
+      color3: '#ff8c00' 
+    },
+    10: { 
+      color1: '#ffb6c1', 
+      color2: '#f0e68c',
+      color3: '#ffa07a' 
+    },
+    default: { 
+      color1: '#000080', 
+      color2: '#00ffff',
+      color3: '#0080ff'
+    }
+  };
+  
+  return colors[section] || colors.default;
+}
+    
+    function getEmitterColor(section) {
+      const colorMap = {
+        1: "255,255,255",
+        2: "255,69,0",
+        3: "100,100,100",
+        4: "255,0,0",
+        5: "128,0,128",
+        6: "255,215,0",
+        7: "200,200,200",
+        8: "210,180,140",
+        9: "255,223,0",
+        10: "255,192,203"
+      };
+      return colorMap[section] || "255,255,0";
+    }
+    
+    /* ===================================
+       Three.js & 3D Animation
+    =================================== */
+    
+    function initThree() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.getElementById("three-container").appendChild(renderer.domElement);
+      
+      mainGroup = new THREE.Group();
+      scene.add(mainGroup);
+      
+      // Create the central icosahedron
+      const geometry = new THREE.IcosahedronGeometry(0.1, 1);
+      const material = new THREE.MeshStandardMaterial({ 
+        color: 0x00ff00, 
+        wireframe: false, 
+        emissive: 0x003300 
+      });
+      polyhedron = new THREE.Mesh(geometry, material);
+      mainGroup.add(polyhedron);
+      
+      // Add a point light
+      const pointLight = new THREE.PointLight(0xffffff, 1);
+      pointLight.position.set(5, 5, 5);
+      scene.add(pointLight);
+      
+      // orbitSpheres = [];
+      // camera.position.z = 5;
+      // window.addEventListener("resize", onWindowResize, false);
+
+      // Initialize texture system
+      if (window.PolyhedronTextures) {
+        window.PolyhedronTextures.initialize(THREE);
+      }
+    }
+    
+    function onWindowResize(){
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    
+    function updateOrbitSpheres(newCount) {
+      // Remove old spheres
+      orbitSpheres.forEach(sphere => mainGroup.remove(sphere));
+      orbitSpheres = [];
+      const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+      const sphereMaterial = new THREE.MeshBasicMaterial({ color: polyhedron.material.color.getHex() });
+      for (let i = 0; i < newCount; i++) {
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
+        sphere.material.transparent = true;
+        sphere.material.opacity = 0.8;
+        sphere.userData.angle = i / newCount * Math.PI * 2;
+        sphere.userData.distance = 2;
+        sphere.position.set(
+          Math.cos(sphere.userData.angle) * sphere.userData.distance,
+          Math.sin(sphere.userData.angle) * sphere.userData.distance,
+          0
+        );
+        orbitSpheres.push(sphere);
+        mainGroup.add(sphere);
+      }
+    }
+    
+    // Modified updateSceneParameters function to apply textures
+    function updateSceneParameters(section) {
+  const colors = {
+    1: 0x222222, 2: 0xff4500, 3: 0x888888, 4: 0xff0000, 5: 0x800080,
+    6: 0xffd700, 7: 0xc8c8c8, 8: 0xd2b48c, 9: 0xffdf00, 10: 0xffc0cb
+  };
+  const newColor = colors[section] || 0x00ff00;
+  
+  // Store original scale before applying texture
+  const originalScaleX = polyhedron.scale.x;
+  const originalScaleY = polyhedron.scale.y;
+  const originalScaleZ = polyhedron.scale.z;
+  
+  // Apply texture if available
+  if (window.PolyhedronTextures) {
+    const texture = window.PolyhedronTextures.getTexture(section);
+    if (texture) {
+      // Replace the material with our textured one
+      polyhedron.material = texture.material;
+      // Add the texture map
+      polyhedron.material.map = texture.map;
+      // Make sure to update
+      polyhedron.material.needsUpdate = true;
+    } else {
+      // If no texture, fall back to the original color
+      polyhedron.material.color.setHex(newColor);
+      polyhedron.material.map = null;
+      polyhedron.material.needsUpdate = true;
+    }
+  } else {
+    // If texture system not loaded, just update color
+    polyhedron.material.color.setHex(newColor);
+  }
+  
+  // Restore original scale
+  polyhedron.scale.set(originalScaleX, originalScaleY, originalScaleZ);
+  
+  const speedMap = {
+    1: -0.01, 2: 0.02, 3: 0.015, 4: 0.03, 5: 0.025,
+    6: 0.02, 7: 0.035, 8: 0.02, 9: 0.015, 10: 0.01
+  };
+  rotationSpeed = speedMap[section] || 0.01;
+  
+  // Update orbit spheres
+  orbitSpheres.forEach(sphere => {
+    sphere.material.color.setHex(newColor);
+    sphere.material.transparent = true;
+    sphere.material.opacity = 0.8;
+  });
+  updateOrbitSpheres(section);
+}
+    
+        // Add a function to clear the texture when audio stops
+            function clearPolyhedronTexture() {
+      if (polyhedron) {
+        // Store original scale
+        const originalScaleX = polyhedron.scale.x;
+        const originalScaleY = polyhedron.scale.y;
+        const originalScaleZ = polyhedron.scale.z;
+        
+        // Reset to a basic material
+        polyhedron.material = new THREE.MeshStandardMaterial({ 
+          color: 0x00ff00, 
+          wireframe: false, 
+          emissive: 0x003300 
+        });
+        polyhedron.material.needsUpdate = true;
+        
+        // Restore original scale
+        polyhedron.scale.set(originalScaleX, originalScaleY, originalScaleZ);
+      }
+    }
+
+    // Update audio visualization in 3D scene
+    function updateAudioVisualization() {
+      // Only update for songs, not audiobooks
+      if (!shouldShowVisualization()) {
+        return;
+      }
+      
+      // Get frequency data from audio
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Calculate average frequency value
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+      }
+      const averageFreq = sum / dataArray.length;
+      const normalizedAvg = averageFreq / 255; // Scale to 0-1
+      
+      // 1. Modify polyhedron based on audio
+      // Pulse size based on bass frequencies (first few values of dataArray)
+      let bassAvg = 0;
+      for (let i = 0; i < Math.min(8, dataArray.length); i++) {
+        bassAvg += dataArray[i];
+      }
+      bassAvg = bassAvg / Math.min(8, dataArray.length) / 255;
+      
+      polyhedron.scale.set(
+        1 + bassAvg * 0.3,
+        1 + bassAvg * 0.3,
+        1 + bassAvg * 0.3
+      );
+      
+      // Speed of rotation based on mid-frequencies
+      const dynamicSpeed = rotationSpeed * (1 + normalizedAvg * 0.5);
+      polyhedron.rotation.x += dynamicSpeed;
+      polyhedron.rotation.y += dynamicSpeed;
+      
+      // 2. Modify orbit spheres based on different frequency bands
+      if (orbitSpheres.length > 0) {
+        const bandSize = Math.floor(dataArray.length / orbitSpheres.length);
+        
+        orbitSpheres.forEach((sphere, i) => {
+          // Get average of this frequency band
+          let bandSum = 0;
+          const startBand = i * bandSize;
+          const endBand = startBand + bandSize;
+          
+          for (let j = startBand; j < endBand && j < dataArray.length; j++) {
+            bandSum += dataArray[j];
+          }
+          
+          const bandAvg = bandSum / bandSize / 255; // Normalize to 0-1
+          
+          // Update sphere properties based on its frequency band
+          sphere.userData.angle += dynamicSpeed * (1 + bandAvg * 0.5);
+          
+          // Make orbit distance responsive to audio
+          const baseDistance = 2;
+          sphere.userData.distance = baseDistance * (1 + bandAvg * 0.8);
+          
+          // Update position with new angle and distance
+          sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
+          sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
+          
+          // Update size and opacity
+          sphere.scale.set(
+            0.7 + bandAvg * 1.5,
+            0.7 + bandAvg * 1.5,
+            0.7 + bandAvg * 1.5
+          );
+          sphere.material.opacity = 0.4 + bandAvg * 0.6;
+        });
+      }
+    }
+    
+    function animateThree() {
+      requestAnimationFrame(animateThree);
+      
+      if (!freezeMotion) {
+        // Basic animation when no audio is playing or when playing audiobooks
+        if (!shouldShowVisualization()) {
+          polyhedron.rotation.x += rotationSpeed;
+          polyhedron.rotation.y += rotationSpeed;
+          
+          orbitSpheres.forEach(sphere => {
+            sphere.userData.angle += rotationSpeed;
+            sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
+            sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
+          });
+        } else {
+          // Audio-driven animation only when songs are playing
+          updateAudioVisualization();
+        }
+        
+        const t = Date.now() * 28.8354/1000000 * 1.3;
+        const circleRadiusMotion = 1.5;
+        mainGroup.position.x = Math.cos(t) * circleRadiusMotion - 1;
+        mainGroup.position.y = -Math.sin(t) * circleRadiusMotion;
+      }
+      
+      renderer.render(scene, camera);
+    }
+    
+    /* ===================================
+       Particle System
+    =================================== */
+    
+    class Particle {
+      constructor(x, y, vx, vy, life, color) {
+        this.x = x; this.y = y;
+        this.vx = vx; this.vy = vy;
+        this.life = life; this.remainingLife = life;
+        this.color = color;
+      }
+      update(delta) {
+        this.x += this.vx * delta;
+        this.y += this.vy * delta;
+        this.remainingLife -= delta;
+      }
+      draw(ctx) {
+        const alpha = Math.max(this.remainingLife / this.life, 0);
+        ctx.fillStyle = `rgba(${this.color}, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    function spawnParticles(emitter, count, speedMultiplier) {
+      // Get current position from emitter
+      const position = emitter.getPosition();
+      const x = position.x;
+      const y = position.y;
+      const color = emitter.color;
+      
+      for (let i = 0; i < count; i++) {
+        const t = Date.now() * 0.0008;
+        const angle = Math.cos(t) * Math.PI * 2 + Math.random() * 0.4;
+        const speed = (Math.random() * 5 + 100) * speedMultiplier;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed;
+        const life = Math.random() * 1 + 0.2;
+        particles.push(new Particle(x, y, vx, vy, life, color));
+      }
+    }
+    
+    function animateParticles(time) {
+      const delta = (time - lastTime) / 1000;
+      lastTime = time;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      if (activeEmitter) {
+        spawnAccumulator += delta;
+        
+        // If audio is playing, make particle emission react to audio (only for songs)
+        if (shouldShowVisualization()) {
+          analyser.getByteFrequencyData(dataArray);
+          
+          // Calculate average frequency
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avgFreq = sum / dataArray.length;
+          
+          // More particles and faster with louder audio
+          const baseInterval = 0.1;
+          const speedMultiplier = 1 + (avgFreq / 255) * 1.5;
+          const particleCount = Math.max(3, Math.floor(avgFreq / 255 * 15));
+          
+          while (spawnAccumulator > baseInterval) {
+            spawnParticles(activeEmitter, particleCount, speedMultiplier);
+            spawnAccumulator -= baseInterval;
+          }
+        } else {
+          // Default particle behavior when no audio playing
+          while (spawnAccumulator > 0.1) {
+            spawnParticles(activeEmitter, 5, 1);
+            spawnAccumulator -= 0.1;
+          }
+        }
+      }
+      
+      // Process and draw particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update(delta);
+        if (p.remainingLife <= 0) {
+          particles.splice(i, 1);
+        } else {
+          p.draw(ctx);
+        }
+      }
+      
+      requestAnimationFrame(animateParticles);
+    }
+    
+    /* ===================================
+       Special Combinations & Effects
+    =================================== */
+    
+    // List of special combinations
+    const specialCombinations = {
+      "777": true, "003": true, "001": true, "002": true, "004": true, "006": true, 
+      "008": true, "333": true, "111": true, "222": true, "888": true, "000": true, 
+      "666": true, "999": true, "555": true, "444": true
+    };
+    
+    // Helper: convert section "10" to "0"
+    function convertSection(section) {
+      return section === 10 ? "0" : section.toString();
+    }
+    
+  // Enhanced shine animation that mimics a "shiny Pokémon" effect
+  function triggerSpecialAnimation() {
+    const overlay = document.getElementById("special-overlay");
+    overlay.style.display = "block";
+    overlay.innerHTML = ""; // Clear any previous elements
+    
+    // Create an initial flash effect
+    const flash = document.createElement("div");
+    flash.style.position = "absolute";
+    flash.style.width = "100%";
+    flash.style.height = "100%";
+    flash.style.backgroundColor = "white";
+    flash.style.opacity = "0";
+    overlay.appendChild(flash);
+    
+    // Flash sequence
+    gsap.to(flash, {
+      opacity: 0.7,
+      duration: 2.0,
+      yoyo: true,
+      repeat: 1,
+      onComplete: function() {
+        // Remove the flash element when done
+        overlay.removeChild(flash);
+      }
+    });
+    
+    // Create shine elements from each corner
+    const corners = [
+      { angle: 45, startX: -window.innerWidth, startY: window.innerHeight }, // bottom-left to top-right
+      { angle: -45, startX: window.innerWidth * 2, startY: window.innerHeight }, // bottom-right to top-left
+      { angle: 45, startX: window.innerWidth * 2, startY: -window.innerHeight/2 }, // top-right to bottom-left
+      { angle: -45, startX: -window.innerWidth, startY: -window.innerHeight/2 }  // top-left to bottom-right
+    ];
+    
+    // Create and animate each shine from different corners
+    corners.forEach((corner, index) => {
+      setTimeout(() => {
+        // Create shine element
+        const shine = document.createElement("div");
+        shine.className = "shine";
+        overlay.appendChild(shine);
+        
+        // Set initial position and rotation
+        gsap.set(shine, { 
+          x: corner.startX, 
+          y: corner.startY, 
+          opacity: 0.9,
+          rotation: corner.angle
+        });
+        
+        // Animate across the screen
+        gsap.to(shine, {
+          duration: 3.0, 
+          x: corner.startX > 0 ? -window.innerWidth : window.innerWidth * 2,
+          y: corner.startY > 0 ? -window.innerHeight/2 : window.innerHeight,
+          ease: "power2.inOut",
+          onComplete: function() {
+            // Remove this shine element when animation completes
+            overlay.removeChild(shine);
+          }
+        });
+      }, index * 150); // Stagger the animations
+    });
+    
+    // Create sparkle effects
+    const sparkleCount = 40; // Number of sparkles
+    for (let i = 0; i < sparkleCount; i++) {
+      setTimeout(() => {
+        createSparkle(overlay);
+      }, Math.random() * 1000); // Random delay for each sparkle
+    }
+    
+    // Set a timeout to hide the overlay after animations complete
+    setTimeout(() => {
+      gsap.to(overlay, {
+        opacity: 0,
+        duration: 1.5,
+        delay: 2.5, // Start fading after most animations are done
+        onComplete: function() {
+          overlay.style.display = "none";
+          overlay.style.opacity = 1; // Reset opacity for next time
+        }
+      });
+    }, 0);
+  }
+  
+  // Helper function to create individual sparkles
+  function createSparkle(parent) {
+    const sparkle = document.createElement("div");
+    sparkle.className = "sparkle";
+    
+    // Random position
+    const x = Math.random() * window.innerWidth;
+    const y = Math.random() * window.innerHeight;
+    
+    // Random size (50% variation)
+    const size = 5 + Math.random() * 15;
+    
+    // Random color
+    const hue = Math.floor(Math.random() * 360);
+    const color = `hsl(${hue}, 100%, 70%)`;
+    
+    // Set properties
+    sparkle.style.left = `${x}px`;
+    sparkle.style.top = `${y}px`;
+    sparkle.style.width = `${size}px`;
+    sparkle.style.height = `${size}px`;
+    sparkle.style.backgroundColor = color;
+    
+    // Add to overlay
+    parent.appendChild(sparkle);
+    
+    // Animate
+    gsap.to(sparkle, {
+      keyframes: [
+        { opacity: 0, scale: 0, duration: 0 },
+        { opacity: 1, scale: 1.2, duration: 0.3 },
+        { opacity: 0.8, scale: 0.9, duration: 0.2 },
+        { opacity: 1, scale: 1.1, duration: 0.2 },
+        { opacity: 0.7, scale: 1, duration: 0.3 },
+        { opacity: 0, scale: 0, duration: 0.5 }
+      ],
+      ease: "power1.out",
+      onComplete: function() {
+        parent.removeChild(sparkle);
+      }
+    });
+  }
+    
+    /* ===================================
+       Media Path Management
+    =================================== */
+    
+    // Helper: Build media paths based on section and type
+    function getMediaPaths(section, type) {
+      const baseSection = convertSection(section);
+      let audioPath, textPath, imagePath;
+      
+      if (type === 'song') {
+        audioPath = "audio/song" + baseSection + ".mp3";
+        textPath = "text/song" + baseSection + ".txt";
+        imagePath = "images/section" + baseSection + "-image.jpg";
+        
+        // Check for special combinations
+        if (secondLastSection !== null && lastSection !== null) {
+          const convSecondLast = convertSection(secondLastSection);
+          const convLast = convertSection(lastSection);
+          const convCurrent = baseSection;
+          const combo = convSecondLast + convLast + convCurrent;
+          
+          if (specialCombinations[combo]) {
+            audioPath = "audio/song" + combo + ".mp3";
+            textPath = "text/song" + combo + ".txt";
+            imagePath = "images/section" + combo + "-image.jpg";
+          }
+        }
+      } else {
+        // Audiobook
+        audioPath = "audio/audio" + baseSection + ".mp3";
+        textPath = "text/audio" + baseSection + ".txt";
+        imagePath = "images/section" + baseSection + "-image.jpg";
+      }
+      
+      return { audioPath, textPath, imagePath };
+    }
+    
+    /* ===================================
+       State Management
+    =================================== */
+    
+    // Helper: update click history
+    function updateClickHistory(section) {
+      secondLastSection = lastSection;
+      lastSection = section;
+    }
+    
+    // Helper: clear current active state
+    function clearCurrentActive() {
+      if (currentActive && currentActive.section) {
+        const elem = document.getElementById("section-" + currentActive.section);
+        if (elem) { elem.classList.remove("active"); }
+      }
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+    }
+    
+    // Helper: reset active state completely (used when toggling off)
+    // Also modify resetActiveState to clear the texture when toggling off
+    function resetActiveState() {
+      updateDebugInfo("Resetting active state...");
+      
+      clearCurrentActive();
+      currentActive = null;
+      activeEmitter = null;
+      freezeMotion = true;
+      textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+      removeStyleClasses();
+      document.body.classList.add('default-style');
+      lastSection = null;
+      secondLastSection = null;
+      
+      // Reset polyhedron scale and clear texture
+      if (polyhedron) {
+        polyhedron.scale.set(1, 1, 1);
+        clearPolyhedronTexture();
+      }
+      
+      // Reset orbit spheres
+      orbitSpheres.forEach(sphere => {
+        sphere.userData.distance = 2;
+        sphere.scale.set(1, 1, 1);
+        sphere.material.opacity = 0.8;
+      });
+      
+      // Keep visualization running but show idle state
+      startVisualization();
+    }
+    
+    function removeStyleClasses() {
+      document.body.classList.remove(
+        'style-section-1', 'style-section-2', 'style-section-3', 'style-section-4',
+        'style-section-5', 'style-section-6', 'style-section-7', 'style-section-8',
+        'style-section-9', 'style-section-10'
+      );
+    }
+    
+    /* ===================================
+       Audio Playback Handlers
+    =================================== */
+    
+    // Main audio click handler
+    function handleAudioClick(section, type) {
+      updateDebugInfo(`handleAudioClick: section=${section}, type=${type}`);
+      
+      // If same active section clicked, toggle off
+      if (currentActive && currentActive.section === section && currentActive.type === type) {
+        resetActiveState();
+        return;
+      }
+      
+      // Get media paths for current click
+      const { audioPath, textPath, imagePath } = getMediaPaths(section, type);
+      updateDebugInfo(`Media paths: audio=${audioPath}, text=${textPath}`);
+      
+      // If special combination exists, trigger the golden shine animation
+      if (type === 'song' && secondLastSection !== null && lastSection !== null) {
+        const convSecondLast = convertSection(secondLastSection);
+        const convLast = convertSection(lastSection);
+        const convCurrent = convertSection(section);
+        const combo = convSecondLast + convLast + convCurrent;
+        if (specialCombinations[combo]) {
+          triggerSpecialAnimation();
+          updateDebugInfo(`Special combination detected: ${combo}`);
+        }
+      }
+      
+      // Update click history
+      updateClickHistory(section);
+      
+      // Clear current active state if any
+      clearCurrentActive();
+      
+      // Set new active state
+      currentActive = { section, type };
+      
+      const secElem = document.getElementById("section-" + section);
+      if (secElem) { secElem.classList.add("active"); }
+      
+      // Set audio source
+      audioPlayer.src = audioPath;
+      
+      // Force visualization initialization before playing
+      if (!audioInitialized) {
+        updateDebugInfo("Initializing audio context directly before play...");
+        initAudioContext();
+      }
+      
+      // Make the visualization visible only for songs
+      visualizationCanvas.style.opacity = type === 'song' ? '0.4' : '0';
+      
+      // Play the audio with more robust error handling
+      updateDebugInfo("Attempting to play audio...");
+      const playPromise = audioPlayer.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          updateDebugInfo("✅ Audio playback started successfully");
+          
+          // Make sure audio context is running
+          if (audioContext && audioContext.state === 'suspended') {
+            updateDebugInfo("Resuming suspended audio context...");
+            audioContext.resume().then(() => {
+              updateDebugInfo(`Audio context resumed: ${audioContext.state}`);
+            });
+          }
+        }).catch(error => {
+          updateDebugInfo(`❌ Audio playback error: ${error.message}`);
+          console.error("Error playing audio:", error);
+          
+          // Try to recover gracefully
+          if (error.name === 'NotAllowedError') {
+            updateDebugInfo("Browser blocked autoplay. Please try clicking again.");
+            alert("Audio playback was blocked by your browser. Please click again to play.");
+          }
+        });
+      }
+      
+      centerImage.src = imagePath;
+      removeStyleClasses();
+      document.body.classList.add("style-section-" + section);
+      updateSceneParameters(section);
+      freezeMotion = false;
+      
+      // Improved particle emitter positioning that updates dynamically
+      activeEmitter = { 
+        getPosition: function() {
+          // Get updated position on each frame to account for zooming/scrolling
+          const elem = document.getElementById("section-" + section);
+          if (elem) {
+            const rect = elem.getBoundingClientRect();
+            return {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2
+            };
+          }
+          return { x: 0, y: 0 };
+        },
+        color: getEmitterColor(section)
+      };
+      
+      // Load text content
+      fetch(textPath)
+        .then(response => {
+          if (!response.ok) { throw new Error("Network response was not ok"); }
+          return response.text();
+        })
+        .then(data => { 
+          textContainer.textContent = data;
+          updateDebugInfo("Text content loaded successfully");
+        })
+        .catch(error => {
+          textContainer.textContent = "Error loading text.";
+          updateDebugInfo(`Error fetching text: ${error.message}`);
+          console.error("Error fetching text file:", error);
+        });
+    }
+    
+    function handlePrologue() {
+      if (currentActive && currentActive.prologue) {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        currentActive = null;
+        activeEmitter = null;
+        freezeMotion = true;
+        textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+        
+        // Hide visualization for audiobooks
+        visualizationCanvas.style.opacity = '0';
+        return;
+      }
+      
+      if (currentActive) {
+        clearCurrentActive();
+      }
+      
+      currentActive = { prologue: true, type: 'audiobook' }; // Mark as audiobook
+      activeEmitter = null;
+      freezeMotion = true;
+      audioPlayer.src = "audio/audio00.mp3";
+      
+      // Hide visualization for audiobooks
+      visualizationCanvas.style.opacity = '0';
+      
+      // Initialize audio context if needed
+      audioPlayer.play().then(() => {
+        if (!audioInitialized) {
+          initAudioContext();
+        } else if (audioContext && audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+      }).catch(e => {
+        console.error("Error starting prologue audio:", e);
+      });
+      
+      centerImage.src = "images/default-image.jpg";
+      textContainer.innerHTML = "";
+      
+      fetch("text/audio00.txt")
+        .then(response => {
+          if (!response.ok) { throw new Error("Network response was not ok"); }
+          return response.text();
+        })
+        .then(data => { 
+          textContainer.textContent = data;
+          updateDebugInfo("Prologue text loaded successfully");
+        })
+        .catch(error => {
+          textContainer.textContent = "Error loading prologue text.";
+          updateDebugInfo(`Error fetching prologue text: ${error.message}`);
+          console.error("Error fetching prologue text:", error);
+        });
+    }
+    
+    /* ===================================
+       Event Listeners
+    =================================== */
+    
+    // Handle audio end
+    // Modify the audio end event handler to clear the texture
+    audioPlayer.addEventListener('ended', function () {
+      if (currentActive && currentActive.section) {
+        const elem = document.getElementById("section-" + currentActive.section);
+        if (elem) { elem.classList.remove("active"); }
+      }
+      currentActive = null;
+      activeEmitter = null;
+      freezeMotion = true;
+      centerImage.src = "images/default-image.jpg";
+      textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+      removeStyleClasses();
+      document.body.classList.add('default-style');
+      
+      // Hide visualization when audio ends
+      visualizationCanvas.style.opacity = '0';
+      
+      // Reset polyhedron scale and clear texture
+      if (polyhedron) {
+        polyhedron.scale.set(1, 1, 1);
+        clearPolyhedronTexture();
+      }
+    });
+    
+    // Key press handler for visualization style cycling
+    window.addEventListener('keydown', function(e) {
+      // Press 'V' key to cycle visualization styles
+      if (e.key === 'v' || e.key === 'V') {
+        currentVisualizationStyle = (currentVisualizationStyle % 3) + 1;
+        console.log(`Switched to visualization style ${currentVisualizationStyle}`);
+      }
+    });
+    
+    // Prevent right-click context menu on the audio element
+    audioPlayer.addEventListener("contextmenu", function(e) {
+      e.preventDefault();
+    });
+    
+    // Initialize everything on page load
+    window.addEventListener('DOMContentLoaded', function() {
+      // Initialize Three.js
+      initThree();
+      animateThree();
+      
+      // Initialize particle animation
+      requestAnimationFrame(animateParticles);
+      
+      // Start visualization loop
+      startVisualization();
+      
+      // Monitor audio player events for specific problem sections
+      audioPlayer.addEventListener('play', () => {
+        if (currentActive && [1, 3, 7].includes(parseInt(currentActive.section))) {
+          console.log(`Playing section ${currentActive.section} as type ${currentActive.type}`);
+          console.log(`Visualization should be visible: ${shouldShowVisualization()}`);
+          
+          // Force-set canvas opacity if it's a song
+          if (currentActive.type === 'song') {
+            visualizationCanvas.style.opacity = '0.4';
+            console.log("Forced visualization opacity to 0.4 for problem section");
+          }
+        }
+      });
+    });
+    
+    /* ===================================
+       UI Controls
+    =================================== */
+    
+    // Toggle animations on/off
+    function toggleAnimations() {
+      const btn = document.getElementById("toggle-anim");
+      freezeMotion = !freezeMotion;
+      btn.textContent = freezeMotion ? "Anim On" : "Anim Off";
+      
+      // Reset visualizations when animations are off
+      if (freezeMotion) {
+        // Hide visualization when animations are off
+        visualizationCanvas.style.opacity = '0';
+        
+        if (polyhedron) {
+          polyhedron.scale.set(1, 1, 1);
+        }
+        orbitSpheres.forEach(sphere => {
+          sphere.userData.distance = 2;
+          sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
+          sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
+          sphere.scale.set(1, 1, 1);
+          sphere.material.opacity = 0.8;
+        });
+      } else {
+        // Show visualization when animations are on (but only for songs)
+        if (currentActive && currentActive.type === 'song') {
+          visualizationCanvas.style.opacity = '0.4';
+        }
+      }
+    }
+  </script>
+</body>
+</html>
