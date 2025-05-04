@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio and Visual Interactive Webpage</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Times+New+Roman&display=swap" rel="stylesheet">
+  <!-- Three.js and GSAP from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+  <style>
+    /* ======================
+       Toggle Button Style
+       ====================== */
+    #toggle-anim {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    /* ======================
+       Three.js & Particle Canvas Styles
+       ====================== */
+    #three-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -3;
+      pointer-events: none;
+    }
+    #particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -2;
+      pointer-events: none;
+    }
+    
+    /* ======================
+       Special Animation Overlay Styles
+       ====================== */
+    #special-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 50;
+      display: none; /* Hidden by default */
+      overflow: hidden;
+    }
+    /* The shine element that will animate diagonally */
+    #special-overlay .shine {
+      position: absolute;
+      width: 200%;  /* Ensure it covers the diagonal distance */
+      height: 50px; /* A narrow stripe */
+      background: linear-gradient(90deg, transparent, rgba(255,215,0,0.8), transparent);
+      filter: blur(10px);
+      transform: rotate(45deg);
+      opacity: 0;
+    }
+    
+    /* ======================
+       Keyframe Animations (unchanged)
+       ====================== */
+    @keyframes breeze { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    @keyframes shadowPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(0.4); } }
+    @keyframes fireFlicker { 0% { filter: brightness(1); } 25% { filter: brightness(1.3); } 50% { filter: brightness(0.8); } 75% { filter: brightness(1.3); } 100% { filter: brightness(1); } }
+    @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-4px, 4px); } 40% { transform: translate(4px, -4px); } 60% { transform: translate(-4px, -4px); } 80% { transform: translate(4px, 4px); } 100% { transform: translate(0); } }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    @keyframes fall { 0% { background-position: 0 -100px; } 100% { background-position: 0 100px; } }
+    @keyframes wander { 0% { background-position: 0 0; } 100% { background-position: 100% 0; } }
+    @keyframes dawn { 0% { background-position: 0 0; } 50% { background-position: 50% 50%; } 100% { background-position: 0 0; } }
+    @keyframes celestial { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes wildernessFade { 0%, 80% { opacity: 0; } 85% { opacity: 0.5; } 90% { opacity: 0.7; } 95% { opacity: 0.9; } 100% { opacity: 0; } }
+    
+    /* ======================
+       Prologue Styles
+       ====================== */
+    #prologue-container {
+      text-align: center;
+      margin-bottom: 20px;
+      font-family: 'Cinzel', serif;
+      color: #000;
+      z-index: 3;
+      position: relative;
+    }
+    #prologue-container .prologue-title {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    #prologue-container .prologue-icon {
+      display: inline-block;
+      cursor: pointer;
+    }
+    #prologue-container .prologue-icon img {
+      width: 40px;
+      height: 40px;
+      background: transparent;
+    }
+    
+    /* ======================
+       Body and Section Styles (unchanged)
+       ====================== */
+    body.default-style { background-color: #f0f0f0; color: #000; }
+    body.style-section-1 { background: linear-gradient(135deg, #111, #444); background-size: 200% 200%; animation: breeze 15s ease-in-out infinite; font-family: 'Times New Roman', serif; }
+    body.style-section-2 { background: linear-gradient(135deg, #550000, #ff6600); background-size: 200% 200%; animation: flicker 1s infinite alternate; color: #fff; }
+    body.style-section-3 { background: #000; animation: shadowPulse 10s infinite alternate; color: #fff; }
+    body.style-section-4 { background: linear-gradient(135deg, #ff0000, #fff700, #ffd700); background-size: 200% 200%; animation: fireFlicker 4s infinite; color: #000; }
+    body.style-section-5 { background: linear-gradient(135deg, #000, #330033); animation: glitch 8s infinite; color: #fff; }
+    body.style-section-6 { background: linear-gradient(135deg, #000080, #ffd700); animation: pulse 12s infinite; color: #fff; }
+    body.style-section-7 { background: #333; background-size: 100% auto; animation: fall 20s linear infinite; color: #fff; }
+    body.style-section-8 { background: url('images/wilderness-bg.jpg'); background-size: cover; animation: wander 3s linear infinite; color: #fff; position: relative; }
+    body.style-section-8::after { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; pointer-events: none; opacity: 0; animation: wildernessFade 3.2s ease-in-out infinite; z-index: 1; }
+    body.style-section-9 { background: linear-gradient(135deg, #001f3f, #ffcc00); background-size: 200% 200%; animation: dawn 20s ease-in-out infinite; color: #fff; }
+    body.style-section-10 { background: #f0e68c; animation: celestial 33s ease-out forwards; color: #000; }
+    
+    /* ======================
+       General Layout & UI Elements (unchanged)
+       ====================== */
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; transition: background 0.5s, color 0.5s; position: relative; z-index: 2; }
+    #main-wrapper { display: flex; align-items: flex-start; justify-content: center; gap: 20px; flex-wrap: wrap; width: 100%; padding: 20px; box-sizing: border-box; position: relative; z-index: 3; }
+    .circle-container { position: relative; width: 500px; height: 500px; margin-bottom: 20px; }
+    .circle { position: absolute; width: 100%; height: 100%; border-radius: 50%; }
+    #center-image { position: absolute; top: 50%; left: 50%; width: 200px; height: 200px; margin-top: -100px; margin-left: -100px; border-radius: 50%; overflow: hidden; border: 2px solid #ccc; background-color: #fff; z-index: 10; }
+    #center-image img { width: 100%; height: 100%; object-fit: cover; }
+    .section { position: absolute; top: 55%; left: 50%; width: 100px; height: 100px; margin: -50px; text-align: center; border: 2px solid transparent; border-radius: 50%; transition: border-color 0.3s, background-color 0.3s; z-index: 5; }
+    .section.active { border-color: #00008B; background-color: rgba(255, 255, 0, 0.4); }
+    .section .section-text { margin-bottom: 5px; }
+    .section .episode-name { font-size: 12px; font-weight: bold; }
+    .section .song-name { font-size: 10px; }
+    .section .icons { display: flex; justify-content: center; gap: 5px; }
+    .section .icons img { width: 24px; height: 24px; cursor: pointer; background: transparent; }
+    #text-container { width: 300px; max-height: 500px; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; line-height: 1.5; color: #000; position: relative; z-index: 4; white-space: pre-wrap; }
+    #audio-player { margin-top: 20px; position: relative; z-index: 3; }
+    @media (max-width: 600px) {
+      .circle-container { width: 300px; height: 300px; }
+      #center-image { width: 120px; height: 120px; margin-top: -60px; margin-left: -60px; }
+      .section { width: 60px; height: 60px; margin: -30px; }
+      .section .episode-name { font-size: 10px; }
+      .section .song-name { font-size: 8px; }
+      .section .icons img { width: 16px; height: 16px; }
+      #text-container { width: 250px; }
+    }
+  </style>
+</head>
+<body class="default-style">
+  <!-- Toggle Animations Button -->
+  <button id="toggle-anim" onclick="toggleAnimations()">Anim Off</button>
+  
+  <!-- Three.js Container for 3D Graphics -->
+  <div id="three-container"></div>
+  <!-- Particle Canvas -->
+  <canvas id="particle-canvas"></canvas>
+  
+  <!-- Prologue Container -->
+  <div id="prologue-container">
+    <p class="prologue-title">Prologue - Piercing the Veil</p>
+    <div class="prologue-icon" onclick="handlePrologue()">
+      <img src="images/audio-note.jpg" alt="Prologue Audiobook">
+    </div>
+  </div>
+  
+  <!-- Main Interactive Area -->
+  <div id="main-wrapper">
+    <div class="circle-container">
+      <div class="circle" id="circle">
+        <!-- Section 1 (Unknown) -->
+        <div class="section" id="section-1" style="transform: rotate(-72deg) translate(200px) rotate(72deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 1-2</div>
+            <div class="song-name">Unknown</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(1, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(1, 'song')">
+          </div>
+        </div>
+        <!-- Section 2 (Ashes) -->
+        <div class="section" id="section-2" style="transform: rotate(-36deg) translate(200px) rotate(36deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 3-4</div>
+            <div class="song-name">Ashes</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(2, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(2, 'song')">
+          </div>
+        </div>
+        <!-- Section 3 (Shadow) -->
+        <div class="section" id="section-3" style="transform: rotate(0deg) translate(200px) rotate(0deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 5</div>
+            <div class="song-name">Shadow</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(3, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(3, 'song')">
+          </div>
+        </div>
+        <!-- Section 4 (Fire & Blood) -->
+        <div class="section" id="section-4" style="transform: rotate(36deg) translate(200px) rotate(-36deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 6</div>
+            <div class="song-name">Fire & Blood</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(4, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(4, 'song')">
+          </div>
+        </div>
+        <!-- Section 5 (Void) -->
+        <div class="section" id="section-5" style="transform: rotate(72deg) translate(200px) rotate(-72deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 7</div>
+            <div class="song-name">Void</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(5, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(5, 'song')">
+          </div>
+        </div>
+        <!-- Section 6 (Lion Roar) -->
+        <div class="section" id="section-6" style="transform: rotate(108deg) translate(200px) rotate(-108deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 8-10</div>
+            <div class="song-name">Lion Roar</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(6, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(6, 'song')">
+          </div>
+        </div>
+        <!-- Section 7 (Abyss) -->
+        <div class="section" id="section-7" style="transform: rotate(144deg) translate(200px) rotate(-144deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 9-10</div>
+            <div class="song-name">Abyss</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(7, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(7, 'song')">
+          </div>
+        </div>
+        <!-- Section 8 (Wilderness) -->
+        <div class="section" id="section-8" style="transform: rotate(180deg) translate(200px) rotate(-180deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 11-12</div>
+            <div class="song-name">Wilderness</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(8, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(8, 'song')">
+          </div>
+        </div>
+        <!-- Section 9 (Dawn) -->
+        <div class="section" id="section-9" style="transform: rotate(216deg) translate(200px) rotate(-216deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 13</div>
+            <div class="song-name">Dawn</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(9, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(9, 'song')">
+          </div>
+        </div>
+        <!-- Section 10 (In Your Arms) - now uses "0" -->
+        <div class="section" id="section-10" style="transform: rotate(252deg) translate(200px) rotate(-252deg);">
+          <div class="section-text">
+            <div class="episode-name">Part 14</div>
+            <div class="song-name">In Your arms</div>
+          </div>
+          <div class="icons">
+            <img src="images/audio-note.jpg" alt="Audiobook" onclick="handleAudioClick(10, 'audiobook')">
+            <img src="images/music-note.jpg" alt="Song" onclick="handleAudioClick(10, 'song')">
+          </div>
+        </div>
+      </div>
+      <div id="center-image">
+        <img src="images/default-image.jpg" alt="Default Center">
+      </div>
+    </div>
+    <div id="text-container">
+      <p>Welcome, Thank you for visiting! To start, click on any of the note or audiobook symbols. Best place to start is with the prologue (above) and then Part 1-2. In each section there is an audio book and a song which roughly connects to that part of the journey. All the words to every audio piece will be displayed here (for audio+visual listeners like myself). May you enjoy this deeply personal journey of mine and maybe find something meaningful for yourself, by Grace. If you don't find it meaningful, that's also okay. I appreciate you giving it a chance.
+With gratitude, 
+Corné.</p>
+    </div>
+  </div>
+  <!-- Updated audio element with controlsList and disabled right-click -->
+  <audio id="audio-player" controls controlsList="nodownload" oncontextmenu="return false;">Your browser does not support the audio element.</audio>
+  
+  <!-- Special overlay for golden shine animation -->
+  <div id="special-overlay"></div>
+  
+  <!-- ======================
+       Three.js Initialization & Enhanced Animation
+       ====================== -->
+  <script>
+    /* ===================================
+       Three.js & Animation Initialization
+    =================================== */
+    let scene, camera, renderer, polyhedron, mainGroup, orbitSpheres = [];
+    let rotationSpeed = 0.005; // Base rotation speed
+    const orbitFactorMap = {1: 1.0, 2: 1.2, 3: 0.8, 4: 1.5, 5: 1.3, 6: 1.1, 7: 1.6, 8: 1.0, 9: 0.9, 10: 1.0};
+    let freezeMotion = false;
+    
+    function initThree() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.getElementById("three-container").appendChild(renderer.domElement);
+      
+      mainGroup = new THREE.Group();
+      scene.add(mainGroup);
+      
+      // Create the central icosahedron
+      const geometry = new THREE.IcosahedronGeometry(1, 1);
+      const material = new THREE.MeshStandardMaterial({ color: 0x00ff00, wireframe: false, emissive: 0x003300 });
+      polyhedron = new THREE.Mesh(geometry, material);
+      mainGroup.add(polyhedron);
+      
+      // Add a point light
+      const pointLight = new THREE.PointLight(0xffffff, 1);
+      pointLight.position.set(5, 5, 5);
+      scene.add(pointLight);
+      
+      orbitSpheres = [];
+      camera.position.z = 5;
+      window.addEventListener("resize", onWindowResize, false);
+    }
+    function onWindowResize(){
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    function updateOrbitSpheres(newCount) {
+      // Remove old spheres
+      orbitSpheres.forEach(sphere => mainGroup.remove(sphere));
+      orbitSpheres = [];
+      const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+      const sphereMaterial = new THREE.MeshBasicMaterial({ color: polyhedron.material.color.getHex() });
+      for (let i = 0; i < newCount; i++) {
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
+        sphere.material.transparent = true;
+        sphere.material.opacity = 0.8;
+        sphere.userData.angle = i / newCount * Math.PI * 2;
+        sphere.userData.distance = 2;
+        sphere.position.set(
+          Math.cos(sphere.userData.angle) * sphere.userData.distance,
+          Math.sin(sphere.userData.angle) * sphere.userData.distance,
+          0
+        );
+        orbitSpheres.push(sphere);
+        mainGroup.add(sphere);
+      }
+    }
+    function updateSceneParameters(section) {
+      const colors = {
+        1: 0x222222, 2: 0xff4500, 3: 0x888888, 4: 0xff0000, 5: 0x800080,
+        6: 0xffd700, 7: 0xc8c8c8, 8: 0xd2b48c, 9: 0xffdf00, 10: 0xffc0cb
+      };
+      const newColor = colors[section] || 0x00ff00;
+      polyhedron.material.color.setHex(newColor);
+      const speedMap = {
+        1: -0.01, 2: 0.02, 3: 0.015, 4: 0.03, 5: 0.025,
+        6: 0.02, 7: 0.035, 8: 0.02, 9: 0.015, 10: 0.01
+      };
+      rotationSpeed = speedMap[section] || 0.01;
+      orbitSpheres.forEach(sphere => {
+        sphere.material.color.setHex(newColor);
+        sphere.material.transparent = true;
+        sphere.material.opacity = 0.8;
+      });
+      updateOrbitSpheres(section);
+    }
+    function animateThree(){
+      requestAnimationFrame(animateThree);
+      if (!freezeMotion) {
+        polyhedron.rotation.x += rotationSpeed;
+        polyhedron.rotation.y += rotationSpeed;
+        orbitSpheres.forEach(sphere => {
+          sphere.userData.angle += rotationSpeed;
+          sphere.position.x = Math.cos(sphere.userData.angle) * sphere.userData.distance;
+          sphere.position.y = Math.sin(sphere.userData.angle) * sphere.userData.distance;
+        });
+        const t = Date.now() * 28.8354/1000000 * 1.3;
+        const circleRadiusMotion = 1.5;
+        mainGroup.position.x = Math.cos(t) * circleRadiusMotion - 1;
+        mainGroup.position.y = -Math.sin(t) * circleRadiusMotion;
+      }
+      renderer.render(scene, camera);
+    }
+    initThree();
+    animateThree();
+    
+    /* ===================================
+       Particle System Initialization
+    =================================== */
+    const canvas = document.getElementById("particle-canvas");
+    const ctx = canvas.getContext("2d");
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+    class Particle {
+      constructor(x, y, vx, vy, life, color) {
+        this.x = x; this.y = y;
+        this.vx = vx; this.vy = vy;
+        this.life = life; this.remainingLife = life;
+        this.color = color;
+      }
+      update(delta) {
+        this.x += this.vx * delta;
+        this.y += this.vy * delta;
+        this.remainingLife -= delta;
+      }
+      draw(ctx) {
+        const alpha = Math.max(this.remainingLife / this.life, 0);
+        ctx.fillStyle = `rgba(${this.color}, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const particles = [];
+    function spawnParticles(x, y, color) {
+      for (let i = 0; i < 5; i++) {
+        const t = Date.now() * 0.0008;
+        const angle = Math.cos(t) * Math.PI * 2 + Math.random() * 0.4;
+        const speed = Math.random() * 5 + 100;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed;
+        const life = Math.random() * 1 + 0.2;
+        particles.push(new Particle(x, y, vx, vy, life, color));
+      }
+    }
+    let activeEmitter = null;
+    let spawnAccumulator = 0;
+    function getEmitterColor(section) {
+      switch (section) {
+        case 1: return "255,255,255";
+        case 2: return "255,69,0";
+        case 3: return "100,100,100";
+        case 4: return "255,0,0";
+        case 5: return "128,0,128";
+        case 6: return "255,215,0";
+        case 7: return "200,200,200";
+        case 8: return "210,180,140";
+        case 9: return "255,223,0";
+        case 10: return "255,192,203";
+        default: return "255,255,0";
+      }
+    }
+    let lastTime = performance.now();
+    function animateParticles(time) {
+      const delta = (time - lastTime) / 1000;
+      lastTime = time;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (activeEmitter) {
+        spawnAccumulator += delta;
+        while (spawnAccumulator > 0.1) {
+          spawnParticles(activeEmitter.x, activeEmitter.y, activeEmitter.color);
+          spawnAccumulator -= 0.1;
+        }
+      }
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update(delta);
+        if (p.remainingLife <= 0) {
+          particles.splice(i, 1);
+        } else {
+          p.draw(ctx);
+        }
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    requestAnimationFrame(animateParticles);
+    
+    /* ===================================
+       Audio & UI Interaction
+    =================================== */
+    let currentActive = null;
+    let lastSection = null, secondLastSection = null;
+    
+    // List of special combinations
+    const specialCombinations = {
+      "777": true, "003": true, "001": true, "002": true, "004": true, "006": true, "008": true, "333": true, "111": true, "222": true, "888": true, "000": true, "666": true, "999": true, "555": true, "444": true
+    };
+    
+    // Helper: convert section "10" to "0"
+    function convertSection(section) {
+      return section === 10 ? "0" : section.toString();
+    }
+    
+    // Helper: Build media paths based on section and type
+    function getMediaPaths(section, type) {
+      const baseSection = convertSection(section);
+      let audioPath, textPath, imagePath;
+      if (type === 'song') {
+        audioPath = "audio/song" + baseSection + ".mp3";
+        textPath = "text/song" + baseSection + ".txt";
+        imagePath = "images/section" + baseSection + "-image.jpg";
+        if (secondLastSection !== null && lastSection !== null) {
+          const convSecondLast = convertSection(secondLastSection);
+          const convLast = convertSection(lastSection);
+          const convCurrent = baseSection;
+          const combo = convSecondLast + convLast + convCurrent;
+          if (specialCombinations[combo]) {
+            audioPath = "audio/song" + combo + ".mp3";
+            textPath = "text/song" + combo + ".txt";
+            imagePath = "images/section" + combo + "-image.jpg";
+          }
+        }
+      } else {
+        // Audiobook
+        audioPath = "audio/audio" + baseSection + ".mp3";
+        textPath = "text/audio" + baseSection + ".txt";
+        imagePath = "images/section" + baseSection + "-image.jpg";
+      }
+      return { audioPath, textPath, imagePath };
+    }
+    
+    // Helper: update click history
+    function updateClickHistory(section) {
+      secondLastSection = lastSection;
+      lastSection = section;
+    }
+    
+    // Helper: clear current active state
+    function clearCurrentActive() {
+      if (currentActive && currentActive.section) {
+        const elem = document.getElementById("section-" + currentActive.section);
+        if (elem) { elem.classList.remove("active"); }
+      }
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+    }
+    
+    // Helper: reset active state completely (used when toggling off)
+    function resetActiveState() {
+      clearCurrentActive();
+      currentActive = null;
+      activeEmitter = null;
+      freezeMotion = true;
+      textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+      removeStyleClasses();
+      document.body.classList.add('default-style');
+      lastSection = null;
+      secondLastSection = null;
+    }
+    
+    const audioPlayer = document.getElementById('audio-player');
+    const centerImage = document.querySelector('#center-image img');
+    const textContainer = document.getElementById('text-container');
+    
+    function removeStyleClasses() {
+      document.body.classList.remove(
+        'style-section-1', 'style-section-2', 'style-section-3', 'style-section-4',
+        'style-section-5', 'style-section-6', 'style-section-7', 'style-section-8',
+        'style-section-9', 'style-section-10'
+      );
+    }
+    
+    // Trigger the golden shine special animation using GSAP
+    function triggerSpecialAnimation() {
+      const overlay = document.getElementById("special-overlay");
+      overlay.style.display = "block";
+      const shine = document.createElement("div");
+      shine.className = "shine";
+      overlay.innerHTML = "";
+      overlay.appendChild(shine);
+      gsap.set(shine, { x: -window.innerWidth, y: window.innerHeight, opacity: 1 });
+      gsap.to(shine, {
+        duration: 25,
+        x: window.innerWidth,
+        y: -window.innerHeight,
+        ease: "power2.out",
+        onComplete: function() {
+          gsap.to(overlay, {
+            duration: 16,
+            opacity: 0,
+            onComplete: function() {
+              overlay.style.display = "none";
+              overlay.style.opacity = 0.8;
+            }
+          });
+        }
+      });
+    }
+    
+    // Main audio click handler
+    function handleAudioClick(section, type) {
+      // If same active section clicked, toggle off
+      if (currentActive && currentActive.section === section && currentActive.type === type) {
+        resetActiveState();
+        return;
+      }
+      
+      // Get media paths for current click
+      const { audioPath, textPath, imagePath } = getMediaPaths(section, type);
+      
+      // If special combination exists, trigger the golden shine animation
+      if (type === 'song' && secondLastSection !== null && lastSection !== null) {
+        const convSecondLast = convertSection(secondLastSection);
+        const convLast = convertSection(lastSection);
+        const convCurrent = convertSection(section);
+        const combo = convSecondLast + convLast + convCurrent;
+        if (specialCombinations[combo]) {
+          triggerSpecialAnimation();
+        }
+      }
+      
+      // Update click history
+      updateClickHistory(section);
+      
+      // Clear current active state if any
+      clearCurrentActive();
+      
+      // Set new active state
+      currentActive = { section, type };
+      const secElem = document.getElementById("section-" + section);
+      if (secElem) { secElem.classList.add("active"); }
+      
+      audioPlayer.src = audioPath;
+      audioPlayer.play();
+      centerImage.src = imagePath;
+      removeStyleClasses();
+      document.body.classList.add("style-section-" + section);
+      updateSceneParameters(section);
+      freezeMotion = false;
+      
+      // Set particle emitter based on section center
+      const rect = secElem.getBoundingClientRect();
+      activeEmitter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, color: getEmitterColor(section) };
+      
+      fetch(textPath)
+        .then(response => {
+          if (!response.ok) { throw new Error("Network response was not ok"); }
+          return response.text();
+        })
+        .then(data => { textContainer.textContent = data; })
+        .catch(error => {
+          textContainer.textContent = "Error loading text.";
+          console.error("Error fetching text file:", error);
+        });
+    }
+    
+    function handlePrologue() {
+      if (currentActive && currentActive.prologue) {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        currentActive = null;
+        activeEmitter = null;
+        freezeMotion = true;
+        textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+        return;
+      }
+      if (currentActive) {
+        clearCurrentActive();
+      }
+      currentActive = { prologue: true };
+      activeEmitter = null;
+      freezeMotion = true;
+      audioPlayer.src = "audio/audio00.mp3";
+      audioPlayer.play();
+      centerImage.src = "images/default-image.jpg";
+      textContainer.innerHTML = "";
+    }
+    
+    audioPlayer.addEventListener('ended', function () {
+      if (currentActive && currentActive.section) {
+        const elem = document.getElementById("section-" + currentActive.section);
+        if (elem) { elem.classList.remove("active"); }
+      }
+      currentActive = null;
+      activeEmitter = null;
+      freezeMotion = true;
+      centerImage.src = "images/default-image.jpg";
+      textContainer.innerHTML = "<p>Select a section to load the text.</p>";
+      removeStyleClasses();
+      document.body.classList.add('default-style');
+    });
+    
+    /* ===================================
+       Toggle Animations Button
+    =================================== */
+    function toggleAnimations(){
+      const btn = document.getElementById("toggle-anim");
+      freezeMotion = !freezeMotion;
+      btn.textContent = freezeMotion ? "Anim On" : "Anim Off";
+    }
+    
+    // Prevent right-click context menu on the audio element (extra precaution)
+    audioPlayer.addEventListener("contextmenu", function(e) {
+      e.preventDefault();
+    });
+  </script>
+</body>
+</html>
